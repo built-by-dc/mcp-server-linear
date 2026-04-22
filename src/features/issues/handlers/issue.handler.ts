@@ -155,11 +155,6 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       if (args.filter?.identifier) {
         filter.identifier = { in: [args.filter.identifier] };
       }
-      // If there's a query but no identifier filter, use it for searching
-      else if (args.query) {
-        // Pass the raw query to use Linear's native search capabilities
-        filter.search = args.query;
-      }
 
       if (args.filter?.project?.id?.eq) {
         filter.project = { id: { eq: args.filter.project.id.eq } };
@@ -177,12 +172,21 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
         filter.priority = { eq: args.priority };
       }
 
-      const result = (await client.searchIssues(
-        filter,
-        args.first || 50,
-        args.after,
-        args.orderBy || "updatedAt"
-      )) as SearchIssuesResponse;
+      // Use Linear's searchIssues endpoint for free-text search (no identifier filter)
+      const result = (args.query && !args.filter?.identifier
+        ? await client.searchIssuesFulltext(
+            args.query,
+            filter,
+            args.first || 50,
+            args.after,
+            args.orderBy || "updatedAt"
+          )
+        : await client.searchIssues(
+            filter,
+            args.first || 50,
+            args.after,
+            args.orderBy || "updatedAt"
+          )) as SearchIssuesResponse;
 
       return this.createJsonResponse(result);
     } catch (error) {

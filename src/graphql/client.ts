@@ -163,6 +163,23 @@ export class LinearGraphQLClient {
     });
   }
 
+  // Full-text search using Linear's searchIssues endpoint
+  async searchIssuesFulltext(
+    term: string,
+    filter: SearchIssuesInput["filter"],
+    first: number = 50,
+    after?: string,
+    orderBy: string = "updatedAt"
+  ): Promise<SearchIssuesResponse> {
+    const { FULLTEXT_SEARCH_ISSUES_QUERY } = await import("./queries.js");
+    const raw = await this.execute<{ searchIssues: SearchIssuesResponse["issues"] }>(
+      FULLTEXT_SEARCH_ISSUES_QUERY,
+      { term, filter, first, after, orderBy }
+    );
+    // Normalise to the same shape as searchIssues so callers stay consistent
+    return { issues: raw.searchIssues };
+  }
+
   // Get teams with their states and labels
   async getTeams(): Promise<TeamResponse> {
     const { GET_TEAMS_QUERY } = await import("./queries.js");
