@@ -163,6 +163,23 @@ export class LinearGraphQLClient {
     });
   }
 
+  // Full-text search including comments, with snippet capping
+  async searchIssuesInComments(
+    term: string,
+    filter: SearchIssuesInput["filter"],
+    first: number = 25,
+    after?: string,
+    orderBy: string = "updatedAt",
+    snippetSize: number = 200
+  ): Promise<SearchIssuesResponse> {
+    const { SEARCH_ISSUES_IN_COMMENTS_QUERY } = await import("./queries.js");
+    const raw = await this.execute<{ searchIssues: SearchIssuesResponse["issues"] }>(
+      SEARCH_ISSUES_IN_COMMENTS_QUERY,
+      { term, filter, first, after, orderBy, snippetSize }
+    );
+    return { issues: raw.searchIssues };
+  }
+
   // Full-text search using Linear's searchIssues endpoint
   async searchIssuesFulltext(
     term: string,

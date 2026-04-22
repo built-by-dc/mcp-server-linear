@@ -105,6 +105,13 @@ export class HandlerFactory {
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
       },
+      [getToolName("linear_search_issues_in_comments")]: {
+        handler: this.issueHandler,
+        method: "handleSearchIssuesInComments",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
       [getToolName("linear_search_issues_by_identifier")]: {
         handler: this.issueHandler,
         method: "handleSearchIssuesByIdentifier",

@@ -8,6 +8,7 @@ import {
   CreateIssuesInput,
   BulkUpdateIssuesInput,
   SearchIssuesInput,
+  SearchIssuesInCommentsInput,
   SearchIssuesByIdentifierInput,
   DeleteIssueInput,
   CreateIssueResponse,
@@ -191,6 +192,36 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       return this.createJsonResponse(result);
     } catch (error) {
       this.handleError(error, "search issues");
+    }
+  }
+
+  /**
+   * Full-text search including comment content, with snippet capping to protect context windows.
+   */
+  async handleSearchIssuesInComments(
+    args: SearchIssuesInCommentsInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+
+      const filter: Record<string, unknown> = {};
+      if (args.teamIds) filter.team = { id: { in: args.teamIds } };
+      if (args.assigneeIds) filter.assignee = { id: { in: args.assigneeIds } };
+      if (args.states) filter.state = { name: { in: args.states } };
+      if (typeof args.priority === "number") filter.priority = { eq: args.priority };
+
+      const result = (await client.searchIssuesInComments(
+        args.query,
+        filter,
+        args.first || 25,
+        args.after,
+        "updatedAt",
+        args.snippetSize || 200
+      )) as SearchIssuesResponse;
+
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "search issues in comments");
     }
   }
 

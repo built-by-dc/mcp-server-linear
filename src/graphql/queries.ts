@@ -123,6 +123,60 @@ export const GET_ISSUES_BY_IDENTIFIER = gql`
   }
 `;
 
+export const SEARCH_ISSUES_IN_COMMENTS_QUERY = gql`
+  query SearchIssuesInComments(
+    $term: String!
+    $filter: IssueFilter
+    $first: Int
+    $after: String
+    $orderBy: PaginationOrderBy
+    $snippetSize: Float
+  ) {
+    searchIssues(
+      term: $term
+      filter: $filter
+      first: $first
+      after: $after
+      orderBy: $orderBy
+      includeComments: true
+      snippetSize: $snippetSize
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        identifier
+        title
+        url
+        state {
+          id
+          name
+          type
+        }
+        assignee {
+          id
+          name
+        }
+        team {
+          id
+          name
+          key
+        }
+        project {
+          id
+          name
+        }
+        priority
+        metadata
+        createdAt
+        updatedAt
+      }
+    }
+  }
+`;
+
 export const FULLTEXT_SEARCH_ISSUES_QUERY = gql`
   query FulltextSearchIssues(
     $term: String!

@@ -56,6 +56,17 @@ export interface SearchIssuesInput {
   orderBy?: string;
 }
 
+export interface SearchIssuesInCommentsInput {
+  query: string;
+  teamIds?: string[];
+  assigneeIds?: string[];
+  states?: string[];
+  priority?: number;
+  first?: number;
+  after?: string;
+  snippetSize?: number;
+}
+
 export interface SearchIssuesByIdentifierInput {
   identifiers: string[];
 }
@@ -187,6 +198,9 @@ export interface IssueHandlerMethods {
     args: BulkUpdateIssuesInput
   ): Promise<BaseToolResponse>;
   handleSearchIssues(args: SearchIssuesInput): Promise<BaseToolResponse>;
+  handleSearchIssuesInComments(
+    args: SearchIssuesInCommentsInput
+  ): Promise<BaseToolResponse>;
   handleSearchIssuesByIdentifier(
     args: SearchIssuesByIdentifierInput
   ): Promise<BaseToolResponse>;

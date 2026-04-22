@@ -396,6 +396,61 @@ export const toolSchemas = {
     },
   },
 
+  [getToolName("linear_search_issues_in_comments")]: {
+    name: getToolName("linear_search_issues_in_comments"),
+    description: getToolDescription(
+      "Search issues by keyword, including comment content. Returns matched issues with short snippets of matching text. Use when searching for a cross-reference or specific text that may appear in comments rather than the issue body."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        query: {
+          type: "string",
+          description: "Search term to match against issue titles, descriptions, and comments",
+        },
+        teamIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Filter by team IDs",
+          optional: true,
+        },
+        assigneeIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Filter by assignee IDs",
+          optional: true,
+        },
+        states: {
+          type: "array",
+          items: { type: "string" },
+          description: "Filter by state names",
+          optional: true,
+        },
+        priority: {
+          type: "number",
+          description: "Filter by priority (0-4)",
+          optional: true,
+        },
+        first: {
+          type: "number",
+          description: "Number of issues to return (default: 25)",
+          optional: true,
+        },
+        after: {
+          type: "string",
+          description: "Cursor for pagination",
+          optional: true,
+        },
+        snippetSize: {
+          type: "number",
+          description: "Max characters of matching comment text to return per result (default: 200)",
+          optional: true,
+        },
+      },
+      required: ["query"],
+    },
+  },
+
   [getToolName("linear_search_issues_by_identifier")]: {
     name: getToolName("linear_search_issues_by_identifier"),
     description: getToolDescription(
