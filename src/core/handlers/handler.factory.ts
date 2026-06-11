@@ -151,6 +151,20 @@ export class HandlerFactory {
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
       },
+      [getToolName("linear_list_views")]: {
+        handler: this.issueHandler,
+        method: "handleListViews",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_get_view_issues")]: {
+        handler: this.issueHandler,
+        method: "handleGetViewIssues",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
       [getToolName("linear_delete_issue")]: {
         handler: this.issueHandler,
         method: "handleDeleteIssue",

@@ -15,6 +15,8 @@ import {
   GetIssueHistoryResponse,
   CreateIssueRelationResponse,
   IssueRelationType,
+  ListViewsResponse,
+  GetViewIssuesResponse,
 } from "../features/issues/types/issue.types.js";
 import {
   ProjectInput,
@@ -242,6 +244,24 @@ export class LinearGraphQLClient {
       CREATE_ISSUE_RELATION_MUTATION,
       { input: { issueId, relatedIssueId, type } }
     );
+  }
+
+  // List custom/saved views
+  async listViews(first: number = 50): Promise<ListViewsResponse> {
+    const { LIST_VIEWS_QUERY } = await import("./queries.js");
+    return this.execute<ListViewsResponse>(LIST_VIEWS_QUERY, { first });
+  }
+
+  // Get the issues a custom view resolves to (applies the view's own filter).
+  async getViewIssues(
+    id: string,
+    first: number = 50
+  ): Promise<GetViewIssuesResponse> {
+    const { GET_VIEW_ISSUES_QUERY } = await import("./queries.js");
+    return this.execute<GetViewIssuesResponse>(GET_VIEW_ISSUES_QUERY, {
+      id,
+      first,
+    });
   }
 
   // Get teams with their states and labels

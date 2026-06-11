@@ -478,6 +478,84 @@ export const SEARCH_DOCUMENTS_QUERY = gql`
   }
 `;
 
+export const LIST_VIEWS_QUERY = gql`
+  query ListViews($first: Int) {
+    customViews(first: $first) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        name
+        description
+        shared
+        team {
+          id
+          key
+          name
+        }
+        creator {
+          id
+          name
+        }
+        updatedAt
+      }
+    }
+  }
+`;
+
+export const GET_VIEW_ISSUES_QUERY = gql`
+  query GetViewIssues($id: String!, $first: Int) {
+    customView(id: $id) {
+      id
+      name
+      issues(first: $first) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          identifier
+          title
+          url
+          state {
+            id
+            name
+            type
+            color
+          }
+          assignee {
+            id
+            name
+            email
+          }
+          team {
+            id
+            name
+            key
+          }
+          project {
+            id
+            name
+          }
+          priority
+          labels {
+            nodes {
+              id
+              name
+              color
+            }
+          }
+          createdAt
+          updatedAt
+        }
+      }
+    }
+  }
+`;
+
 export const GET_ISSUE_RELATIONS_QUERY = gql`
   query GetIssueRelations($id: String!) {
     issue(id: $id) {

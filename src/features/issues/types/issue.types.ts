@@ -263,6 +263,41 @@ export interface GetIssueHistoryResponse {
   } | null;
 }
 
+export interface ListViewsInput {
+  first?: number;
+}
+
+export interface GetViewIssuesInput {
+  id: string;
+  first?: number;
+}
+
+export interface ListViewsResponse {
+  customViews: {
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    nodes: {
+      id: string;
+      name: string;
+      description?: string | null;
+      shared: boolean;
+      team?: { id: string; key: string; name: string } | null;
+      creator?: { id: string; name: string } | null;
+      updatedAt: string;
+    }[];
+  };
+}
+
+export interface GetViewIssuesResponse {
+  customView: {
+    id: string;
+    name: string;
+    issues: {
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      nodes: Issue[];
+    };
+  } | null;
+}
+
 export interface CreateIssueRelationResponse {
   issueRelationCreate: {
     success: boolean;
@@ -300,4 +335,6 @@ export interface IssueHandlerMethods {
   handleCreateIssueRelation(
     args: CreateIssueRelationInput
   ): Promise<BaseToolResponse>;
+  handleListViews(args: ListViewsInput): Promise<BaseToolResponse>;
+  handleGetViewIssues(args: GetViewIssuesInput): Promise<BaseToolResponse>;
 }

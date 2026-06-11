@@ -698,6 +698,45 @@ export const toolSchemas = {
     },
   },
 
+  [getToolName("linear_list_views")]: {
+    name: getToolName("linear_list_views"),
+    description: getToolDescription(
+      "List custom/saved Linear views with their IDs. Use to find a view's UUID before calling linear_get_view_issues."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        first: {
+          type: "number",
+          description: "Max views to return (default 50)",
+          optional: true,
+        },
+      },
+    },
+  },
+
+  [getToolName("linear_get_view_issues")]: {
+    name: getToolName("linear_get_view_issues"),
+    description: getToolDescription(
+      "Get the issues a custom/saved view resolves to (the view's own filter applied). Get the view UUID from linear_list_views."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Custom view UUID (from linear_list_views)",
+        },
+        first: {
+          type: "number",
+          description: "Max issues to return (default 50)",
+          optional: true,
+        },
+      },
+      required: ["id"],
+    },
+  },
+
   // Linear Team Management Tools
   [getToolName("linear_get_teams")]: {
     name: getToolName("linear_get_teams"),

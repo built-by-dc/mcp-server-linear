@@ -26,6 +26,10 @@ import {
   GetIssueRelationsResponse,
   GetIssueHistoryResponse,
   CreateIssueRelationResponse,
+  ListViewsInput,
+  GetViewIssuesInput,
+  ListViewsResponse,
+  GetViewIssuesResponse,
 } from "../types/issue.types.js";
 import { DocumentNode } from "graphql";
 
@@ -461,6 +465,52 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       return this.createJsonResponse(result.issueRelationCreate);
     } catch (error) {
       this.handleError(error, "create issue relation");
+    }
+  }
+
+  /**
+   * List custom/saved views (to discover view IDs).
+   */
+  async handleListViews(args: ListViewsInput): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      const result = (await client.listViews(
+        args.first ?? 50
+      )) as ListViewsResponse;
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "list views");
+    }
+  }
+
+  /**
+   * Get the issues a custom view resolves to (the view's own filter applied).
+   */
+  async handleGetViewIssues(
+    args: GetViewIssuesInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const result = (await client.getViewIssues(
+        args.id,
+        args.first ?? 50
+      )) as GetViewIssuesResponse;
+
+      if (!result.customView) {
+        throw new Error(`View ${args.id} not found`);
+      }
+
+      return this.createJsonResponse({
+        view: {
+          id: result.customView.id,
+          name: result.customView.name,
+        },
+        issues: result.customView.issues,
+      });
+    } catch (error) {
+      this.handleError(error, "get view issues");
     }
   }
 
