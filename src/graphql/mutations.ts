@@ -107,6 +107,26 @@ export const UPDATE_ISSUE_MUTATION = gql`
   }
 `;
 
+export const CREATE_ISSUE_RELATION_MUTATION = gql`
+  mutation CreateIssueRelation($input: IssueRelationCreateInput!) {
+    issueRelationCreate(input: $input) {
+      success
+      issueRelation {
+        id
+        type
+        issue {
+          identifier
+          title
+        }
+        relatedIssue {
+          identifier
+          title
+        }
+      }
+    }
+  }
+`;
+
 export const DELETE_ISSUE_MUTATION = gql`
   mutation DeleteIssue($id: String!) {
     issueDelete(id: $id) {
@@ -210,3 +230,52 @@ export const DELETE_PROJECT_MILESTONE = gql`
     }
   }
 `;
+
+export const CREATE_DOCUMENT_MUTATION = gql`
+  mutation CreateDocument($input: DocumentCreateInput!) {
+    documentCreate(input: $input) {
+      success
+      document {
+        id
+        title
+        icon
+        url
+        content
+        updatedAt
+        project {
+          id
+          name
+        }
+        initiative {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
+export const UPDATE_DOCUMENT_MUTATION = gql`
+  mutation UpdateDocument($id: String!, $input: DocumentUpdateInput!) {
+    documentUpdate(id: $id, input: $input) {
+      success
+      document {
+        id
+        title
+        icon
+        url
+        content
+        updatedAt
+        project {
+          id
+          name
+        }
+        initiative {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+

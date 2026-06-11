@@ -49,8 +49,19 @@ export interface SearchIssuesInput {
   };
   teamIds?: string[];
   assigneeIds?: string[];
+  unassigned?: boolean; // Only issues with no assignee
   states?: string[];
+  stateTypes?: string[]; // backlog|unstarted|started|completed|canceled
   priority?: number;
+  projectId?: string; // Filter to a single project (UUID)
+  labelIds?: string[]; // Issues having ANY of these label UUIDs
+  labels?: string[]; // Issues having ANY of these label names
+  updatedSince?: string; // ISO-8601; updatedAt >= this
+  createdSince?: string; // ISO-8601; createdAt >= this
+  blocked?: boolean; // Only issues blocked by another (hasBlockedByRelations)
+  blocking?: boolean; // Only issues blocking another (hasBlockingRelations)
+  parentId?: string; // Subtasks of this parent (UUID)
+  noParent?: boolean; // Only top-level issues (no parent)
   first?: number;
   after?: string;
   orderBy?: string;
@@ -60,8 +71,19 @@ export interface SearchIssuesInCommentsInput {
   query: string;
   teamIds?: string[];
   assigneeIds?: string[];
+  unassigned?: boolean;
   states?: string[];
+  stateTypes?: string[];
   priority?: number;
+  projectId?: string;
+  labelIds?: string[];
+  labels?: string[];
+  updatedSince?: string;
+  createdSince?: string;
+  blocked?: boolean;
+  blocking?: boolean;
+  parentId?: string;
+  noParent?: boolean;
   first?: number;
   after?: string;
   snippetSize?: number;
@@ -73,6 +95,23 @@ export interface SearchIssuesByIdentifierInput {
 
 export interface GetIssueInput {
   identifier: string;
+}
+
+export interface GetIssueRelationsInput {
+  identifier: string;
+}
+
+export interface GetIssueHistoryInput {
+  identifier: string;
+  first?: number;
+}
+
+export type IssueRelationType = "blocks" | "related" | "duplicate";
+
+export interface CreateIssueRelationInput {
+  issueId: string; // Issue identifier (e.g. "ENG-123") OR UUID
+  relatedIssueId: string; // Related issue identifier OR UUID
+  type: IssueRelationType;
 }
 
 export interface DeleteIssueInput {
@@ -136,6 +175,9 @@ export interface Issue {
       id: string;
       identifier: string;
       title: string;
+      state?: {
+        name: string;
+      };
     }[];
   };
   createdAt?: string;
@@ -187,6 +229,52 @@ export interface DeleteIssueResponse {
   };
 }
 
+interface RelationIssueRef {
+  id: string;
+  identifier: string;
+  title: string;
+  state?: {
+    name: string;
+    type: string;
+  };
+}
+
+export interface GetIssueRelationsResponse {
+  issue: {
+    id: string;
+    identifier: string;
+    title: string;
+    relations: {
+      nodes: { id: string; type: string; relatedIssue: RelationIssueRef }[];
+    };
+    inverseRelations: {
+      nodes: { id: string; type: string; issue: RelationIssueRef }[];
+    };
+  } | null;
+}
+
+export interface GetIssueHistoryResponse {
+  issue: {
+    id: string;
+    identifier: string;
+    history: {
+      nodes: Record<string, unknown>[];
+    };
+  } | null;
+}
+
+export interface CreateIssueRelationResponse {
+  issueRelationCreate: {
+    success: boolean;
+    issueRelation: {
+      id: string;
+      type: string;
+      issue: { identifier: string; title: string };
+      relatedIssue: { identifier: string; title: string };
+    };
+  };
+}
+
 /**
  * Handler method types
  */
@@ -205,4 +293,11 @@ export interface IssueHandlerMethods {
     args: SearchIssuesByIdentifierInput
   ): Promise<BaseToolResponse>;
   handleDeleteIssue(args: DeleteIssueInput): Promise<BaseToolResponse>;
+  handleGetIssueRelations(
+    args: GetIssueRelationsInput
+  ): Promise<BaseToolResponse>;
+  handleGetIssueHistory(args: GetIssueHistoryInput): Promise<BaseToolResponse>;
+  handleCreateIssueRelation(
+    args: CreateIssueRelationInput
+  ): Promise<BaseToolResponse>;
 }

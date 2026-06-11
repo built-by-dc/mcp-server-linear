@@ -20,6 +20,12 @@ import {
   IssueBatchResponse,
   GetIssueInput,
   EditIssueInput,
+  GetIssueRelationsInput,
+  GetIssueHistoryInput,
+  CreateIssueRelationInput,
+  GetIssueRelationsResponse,
+  GetIssueHistoryResponse,
+  CreateIssueRelationResponse,
 } from "../types/issue.types.js";
 import { DocumentNode } from "graphql";
 
@@ -146,31 +152,69 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
   /**
    * Searches for issues with filtering and pagination.
    */
+  /**
+   * Build a Linear IssueFilter from the flat search parameters shared by
+   * handleSearchIssues and handleSearchIssuesInComments.
+   */
+  private buildIssueFilter(
+    args: SearchIssuesInput | SearchIssuesInCommentsInput
+  ): Record<string, unknown> {
+    const filter: Record<string, unknown> = {};
+
+    if (args.teamIds) filter.team = { id: { in: args.teamIds } };
+
+    // Unassigned (assignee = none) takes precedence over assigneeIds.
+    if (args.unassigned) {
+      filter.assignee = { null: true };
+    } else if (args.assigneeIds) {
+      filter.assignee = { id: { in: args.assigneeIds } };
+    }
+
+    // State by name and/or by type (backlog/unstarted/started/completed/
+    // canceled). Both combine as AND within the same state filter.
+    const state: Record<string, unknown> = {};
+    if (args.states) state.name = { in: args.states };
+    if (args.stateTypes) state.type = { in: args.stateTypes };
+    if (Object.keys(state).length) filter.state = state;
+
+    if (typeof args.priority === "number") filter.priority = { eq: args.priority };
+    if (args.projectId) filter.project = { id: { eq: args.projectId } };
+
+    // labelIds (UUIDs) take precedence over labels (names); ANY-match.
+    if (args.labelIds?.length) {
+      filter.labels = { some: { id: { in: args.labelIds } } };
+    } else if (args.labels?.length) {
+      filter.labels = { some: { name: { in: args.labels } } };
+    }
+
+    if (args.updatedSince) filter.updatedAt = { gte: args.updatedSince };
+    if (args.createdSince) filter.createdAt = { gte: args.createdSince };
+
+    if (args.blocked) filter.hasBlockedByRelations = { eq: true };
+    if (args.blocking) filter.hasBlockingRelations = { eq: true };
+
+    // Orphan (no parent) takes precedence over parentId (subtasks of X).
+    if (args.noParent) {
+      filter.parent = { null: true };
+    } else if (args.parentId) {
+      filter.parent = { id: { eq: args.parentId } };
+    }
+
+    return filter;
+  }
+
   async handleSearchIssues(args: SearchIssuesInput): Promise<BaseToolResponse> {
     try {
       const client = this.verifyAuth();
 
-      const filter: Record<string, unknown> = {};
+      const filter = this.buildIssueFilter(args);
 
-      // Handle identifier-based searches first
+      // Legacy nested filter support (identifier / project).
       if (args.filter?.identifier) {
         filter.identifier = { in: [args.filter.identifier] };
       }
-
       if (args.filter?.project?.id?.eq) {
         filter.project = { id: { eq: args.filter.project.id.eq } };
-      }
-      if (args.teamIds) {
-        filter.team = { id: { in: args.teamIds } };
-      }
-      if (args.assigneeIds) {
-        filter.assignee = { id: { in: args.assigneeIds } };
-      }
-      if (args.states) {
-        filter.state = { name: { in: args.states } };
-      }
-      if (typeof args.priority === "number") {
-        filter.priority = { eq: args.priority };
       }
 
       // Use Linear's searchIssues endpoint for free-text search (no identifier filter)
@@ -204,11 +248,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
     try {
       const client = this.verifyAuth();
 
-      const filter: Record<string, unknown> = {};
-      if (args.teamIds) filter.team = { id: { in: args.teamIds } };
-      if (args.assigneeIds) filter.assignee = { id: { in: args.assigneeIds } };
-      if (args.states) filter.state = { name: { in: args.states } };
-      if (typeof args.priority === "number") filter.priority = { eq: args.priority };
+      const filter = this.buildIssueFilter(args);
 
       const result = (await client.searchIssuesInComments(
         args.query,
@@ -277,6 +317,150 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       });
     } catch (error) {
       this.handleError(error, "get issue");
+    }
+  }
+
+  /**
+   * Resolve a human identifier (e.g. "ENG-123") to an issue UUID.
+   * Passes UUIDs straight through.
+   */
+  private async resolveIssueId(
+    client: LinearGraphQLClient,
+    idOrIdentifier: string
+  ): Promise<string> {
+    const isUuid =
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        idOrIdentifier
+      );
+    if (isUuid) return idOrIdentifier;
+
+    const result = (await client.searchIssues(
+      { identifier: { in: [idOrIdentifier] } },
+      1,
+      undefined,
+      "updatedAt"
+    )) as SearchIssuesResponse;
+
+    const node = result.issues.nodes?.[0];
+    if (!node?.id) {
+      throw new Error(`Issue ${idOrIdentifier} not found`);
+    }
+    return node.id;
+  }
+
+  /**
+   * Get formal Linear relations for an issue. Returns blocks / blocked-by /
+   * related / duplicate. `blocked-by` is synthesised from inverse `blocks`
+   * relations (Linear stores no `blocked-by` type).
+   */
+  async handleGetIssueRelations(
+    args: GetIssueRelationsInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["identifier"]);
+
+      const result = (await client.getIssueRelations(
+        args.identifier
+      )) as GetIssueRelationsResponse;
+
+      if (!result.issue) {
+        throw new Error(`Issue ${args.identifier} not found`);
+      }
+
+      const outgoing = (result.issue.relations?.nodes ?? []).map((r) => ({
+        // From this issue's perspective the type reads directly.
+        type: r.type,
+        issue: r.relatedIssue,
+      }));
+
+      const incoming = (result.issue.inverseRelations?.nodes ?? []).map((r) => ({
+        // Seen from the other side: a `blocks` becomes `blocked-by`, etc.
+        type: r.type === "blocks" ? "blocked-by" : r.type,
+        issue: r.issue,
+      }));
+
+      return this.createJsonResponse({
+        identifier: result.issue.identifier,
+        title: result.issue.title,
+        relations: [...outgoing, ...incoming],
+      });
+    } catch (error) {
+      this.handleError(error, "get issue relations");
+    }
+  }
+
+  /**
+   * Get an issue's activity history (state/assignee/priority/title/relation
+   * changes with timestamps). Comment additions are not part of history.
+   */
+  async handleGetIssueHistory(
+    args: GetIssueHistoryInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["identifier"]);
+
+      const result = (await client.getIssueHistory(
+        args.identifier,
+        args.first ?? 50
+      )) as GetIssueHistoryResponse;
+
+      if (!result.issue) {
+        throw new Error(`Issue ${args.identifier} not found`);
+      }
+
+      return this.createJsonResponse({
+        identifier: result.issue.identifier,
+        history: result.issue.history?.nodes ?? [],
+      });
+    } catch (error) {
+      this.handleError(error, "get issue history");
+    }
+  }
+
+  /**
+   * Create a formal relation (blocks/related/duplicate) between two issues.
+   * Accepts identifiers or UUIDs; resolves identifiers to UUIDs first.
+   */
+  async handleCreateIssueRelation(
+    args: CreateIssueRelationInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, [
+        "issueId",
+        "relatedIssueId",
+        "type",
+      ]);
+
+      const validTypes = ["blocks", "related", "duplicate"];
+      if (!validTypes.includes(args.type)) {
+        throw new Error(
+          `Invalid relation type "${args.type}". Must be one of: ${validTypes.join(
+            ", "
+          )}`
+        );
+      }
+
+      const [issueId, relatedIssueId] = await Promise.all([
+        this.resolveIssueId(client, args.issueId),
+        this.resolveIssueId(client, args.relatedIssueId),
+      ]);
+
+      const result = (await client.createIssueRelation(
+        issueId,
+        relatedIssueId,
+        args.type
+      )) as CreateIssueRelationResponse;
+
+      if (!result.issueRelationCreate?.success) {
+        throw new Error("Failed to create issue relation");
+      }
+
+      return this.createJsonResponse(result.issueRelationCreate);
+    } catch (error) {
+      this.handleError(error, "create issue relation");
     }
   }
 

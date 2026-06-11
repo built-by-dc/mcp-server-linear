@@ -11,6 +11,10 @@ import {
   DeleteIssueResponse,
   Issue,
   IssueBatchResponse,
+  GetIssueRelationsResponse,
+  GetIssueHistoryResponse,
+  CreateIssueRelationResponse,
+  IssueRelationType,
 } from "../features/issues/types/issue.types.js";
 import {
   ProjectInput,
@@ -26,6 +30,13 @@ import {
   LabelResponse,
 } from "../features/teams/types/team.types.js";
 import { UserResponse } from "../features/users/types/user.types.js";
+import {
+  GetDocumentResponse,
+  ListDocumentsResponse,
+  DocumentFilter,
+  SaveDocumentArgs,
+  DocumentMutationResponse,
+} from "../features/documents/types/document.types.js";
 
 export class LinearGraphQLClient {
   private linearClient: LinearClient;
@@ -197,6 +208,42 @@ export class LinearGraphQLClient {
     return { issues: raw.searchIssues };
   }
 
+  // Get formal Linear relations (blocks/related/duplicate) for an issue.
+  // `id` may be a UUID or a human identifier (e.g. "ENG-123") — Linear's
+  // issue(id:) resolves both.
+  async getIssueRelations(id: string): Promise<GetIssueRelationsResponse> {
+    const { GET_ISSUE_RELATIONS_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueRelationsResponse>(GET_ISSUE_RELATIONS_QUERY, {
+      id,
+    });
+  }
+
+  // Get an issue's activity history (state/assignee/priority/title/relation
+  // changes). Comment additions are NOT part of Linear's issue history.
+  async getIssueHistory(
+    id: string,
+    first: number = 50
+  ): Promise<GetIssueHistoryResponse> {
+    const { GET_ISSUE_HISTORY_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueHistoryResponse>(GET_ISSUE_HISTORY_QUERY, {
+      id,
+      first,
+    });
+  }
+
+  // Create a formal relation between two issues. Both IDs must be UUIDs.
+  async createIssueRelation(
+    issueId: string,
+    relatedIssueId: string,
+    type: IssueRelationType
+  ): Promise<CreateIssueRelationResponse> {
+    const { CREATE_ISSUE_RELATION_MUTATION } = await import("./mutations.js");
+    return this.execute<CreateIssueRelationResponse>(
+      CREATE_ISSUE_RELATION_MUTATION,
+      { input: { issueId, relatedIssueId, type } }
+    );
+  }
+
   // Get teams with their states and labels
   async getTeams(): Promise<TeamResponse> {
     const { GET_TEAMS_QUERY } = await import("./queries.js");
@@ -222,6 +269,66 @@ export class LinearGraphQLClient {
     const { SEARCH_PROJECTS_QUERY } = await import("./queries.js");
     return this.execute<SearchProjectsResponse>(SEARCH_PROJECTS_QUERY, {
       filter,
+    });
+  }
+
+  // Get a single document by id
+  async getDocument(id: string): Promise<GetDocumentResponse> {
+    const { GET_DOCUMENT_QUERY } = await import("./queries.js");
+    return this.execute<GetDocumentResponse>(GET_DOCUMENT_QUERY, { id });
+  }
+
+  // List documents with optional filter, ordering, and cursor pagination
+  async listDocuments(
+    first: number,
+    after?: string,
+    filter?: DocumentFilter,
+    orderBy: "createdAt" | "updatedAt" = "updatedAt",
+    includeArchived: boolean = false
+  ): Promise<ListDocumentsResponse> {
+    const { LIST_DOCUMENTS_QUERY } = await import("./queries.js");
+    return this.execute<ListDocumentsResponse>(LIST_DOCUMENTS_QUERY, {
+      first,
+      after,
+      filter,
+      orderBy,
+      includeArchived,
+    });
+  }
+
+  // Free-text document search
+  async searchDocuments(
+    term: string,
+    first: number,
+    after?: string,
+    includeArchived: boolean = false
+  ): Promise<ListDocumentsResponse> {
+    const { SEARCH_DOCUMENTS_QUERY } = await import("./queries.js");
+    const raw = await this.execute<{
+      searchDocuments: ListDocumentsResponse["documents"];
+    }>(SEARCH_DOCUMENTS_QUERY, { term, first, after, includeArchived });
+    return { documents: raw.searchDocuments };
+  }
+
+  // Create a document
+  async createDocument(
+    input: Record<string, unknown>
+  ): Promise<DocumentMutationResponse> {
+    const { CREATE_DOCUMENT_MUTATION } = await import("./mutations.js");
+    return this.execute<DocumentMutationResponse>(CREATE_DOCUMENT_MUTATION, {
+      input,
+    });
+  }
+
+  // Update a document
+  async updateDocument(
+    id: string,
+    input: Record<string, unknown>
+  ): Promise<DocumentMutationResponse> {
+    const { UPDATE_DOCUMENT_MUTATION } = await import("./mutations.js");
+    return this.execute<DocumentMutationResponse>(UPDATE_DOCUMENT_MUTATION, {
+      id,
+      input,
     });
   }
 

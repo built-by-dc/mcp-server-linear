@@ -6,6 +6,7 @@ import { ProjectHandler } from "../../features/projects/handlers/project.handler
 import { TeamHandler } from "../../features/teams/handlers/team.handler.js";
 import { UserHandler } from "../../features/users/handlers/user.handler.js";
 import { CommentHandler } from "../../features/comments/handlers/comment.handler.js";
+import { DocumentHandler } from "../../features/documents/handlers/document.handler.js";
 
 /**
  * Factory for creating and managing feature-specific handlers.
@@ -23,6 +24,7 @@ export class HandlerFactory {
   private teamHandler: TeamHandler;
   private userHandler: UserHandler;
   private commentHandler: CommentHandler;
+  private documentHandler: DocumentHandler;
 
   constructor(auth: LinearAuth, graphqlClient?: LinearGraphQLClient) {
     // Initialize all handlers with shared dependencies
@@ -32,6 +34,7 @@ export class HandlerFactory {
     this.teamHandler = new TeamHandler(auth, graphqlClient);
     this.userHandler = new UserHandler(auth, graphqlClient);
     this.commentHandler = new CommentHandler(auth, graphqlClient);
+    this.documentHandler = new DocumentHandler(auth, graphqlClient);
   }
 
   /**
@@ -44,7 +47,8 @@ export class HandlerFactory {
       | ProjectHandler
       | TeamHandler
       | UserHandler
-      | CommentHandler;
+      | CommentHandler
+      | DocumentHandler;
     method: string;
   } {
     // Map tool names to their handlers and methods
@@ -122,6 +126,27 @@ export class HandlerFactory {
       [getToolName("linear_get_issue")]: {
         handler: this.issueHandler,
         method: "handleGetIssue",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_get_issue_relations")]: {
+        handler: this.issueHandler,
+        method: "handleGetIssueRelations",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_get_issue_history")]: {
+        handler: this.issueHandler,
+        method: "handleGetIssueHistory",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_create_issue_relation")]: {
+        handler: this.issueHandler,
+        method: "handleCreateIssueRelation",
         description: process.env.TOOL_PREFIX
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
@@ -251,6 +276,29 @@ export class HandlerFactory {
       [getToolName("linear_create_customer_need_from_attachment")]: {
         handler: this.commentHandler,
         method: "handleCustomerNeedCreateFromAttachment",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+
+      // Document tools
+      [getToolName("linear_get_document")]: {
+        handler: this.documentHandler,
+        method: "handleGetDocument",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_list_documents")]: {
+        handler: this.documentHandler,
+        method: "handleListDocuments",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_save_document")]: {
+        handler: this.documentHandler,
+        method: "handleSaveDocument",
         description: process.env.TOOL_PREFIX
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,

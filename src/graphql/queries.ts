@@ -98,6 +98,21 @@ export const GET_ISSUES_BY_IDENTIFIER = gql`
             color
           }
         }
+        parent {
+          id
+          identifier
+          title
+        }
+        children {
+          nodes {
+            id
+            identifier
+            title
+            state {
+              name
+            }
+          }
+        }
         comments {
           nodes {
             id
@@ -342,6 +357,199 @@ export const GET_PROJECT_QUERY = gql`
               identifier
               title
             }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_DOCUMENT_QUERY = gql`
+  query GetDocument($id: String!) {
+    document(id: $id) {
+      id
+      title
+      icon
+      content
+      url
+      updatedAt
+      creator {
+        id
+        name
+        email
+      }
+      project {
+        id
+        name
+      }
+      initiative {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const LIST_DOCUMENTS_QUERY = gql`
+  query ListDocuments(
+    $first: Int!
+    $after: String
+    $filter: DocumentFilter
+    $orderBy: PaginationOrderBy
+    $includeArchived: Boolean
+  ) {
+    documents(
+      first: $first
+      after: $after
+      filter: $filter
+      orderBy: $orderBy
+      includeArchived: $includeArchived
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        title
+        icon
+        url
+        createdAt
+        updatedAt
+        archivedAt
+        creator {
+          id
+          name
+          email
+        }
+        project {
+          id
+          name
+        }
+        initiative {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
+export const SEARCH_DOCUMENTS_QUERY = gql`
+  query SearchDocuments(
+    $term: String!
+    $first: Int!
+    $after: String
+    $includeArchived: Boolean
+  ) {
+    searchDocuments(
+      term: $term
+      first: $first
+      after: $after
+      includeArchived: $includeArchived
+    ) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        title
+        icon
+        url
+        createdAt
+        updatedAt
+        archivedAt
+        creator {
+          id
+          name
+          email
+        }
+        project {
+          id
+          name
+        }
+        initiative {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
+export const GET_ISSUE_RELATIONS_QUERY = gql`
+  query GetIssueRelations($id: String!) {
+    issue(id: $id) {
+      id
+      identifier
+      title
+      relations {
+        nodes {
+          id
+          type
+          relatedIssue {
+            id
+            identifier
+            title
+            state {
+              name
+              type
+            }
+          }
+        }
+      }
+      inverseRelations {
+        nodes {
+          id
+          type
+          issue {
+            id
+            identifier
+            title
+            state {
+              name
+              type
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
+export const GET_ISSUE_HISTORY_QUERY = gql`
+  query GetIssueHistory($id: String!, $first: Int) {
+    issue(id: $id) {
+      id
+      identifier
+      history(first: $first) {
+        nodes {
+          id
+          createdAt
+          actor {
+            id
+            name
+          }
+          fromState {
+            name
+          }
+          toState {
+            name
+          }
+          fromAssignee {
+            name
+          }
+          toAssignee {
+            name
+          }
+          fromPriority
+          toPriority
+          fromTitle
+          toTitle
+          relationChanges {
+            identifier
+            type
           }
         }
       }
