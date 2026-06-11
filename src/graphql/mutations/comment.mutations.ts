@@ -32,7 +32,7 @@ export const DELETE_COMMENT = gql`
   mutation DeleteComment($id: String!) {
     commentDelete(id: $id) {
       success
-      id
+      entityId
     }
   }
 `;
@@ -71,10 +71,9 @@ export const CREATE_CUSTOMER_NEED_FROM_ATTACHMENT = gql`
   ) {
     customerNeedCreateFromAttachment(input: $input) {
       success
-      customerNeed {
+      need {
         id
-        title
-        description
+        body
       }
     }
   }

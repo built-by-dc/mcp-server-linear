@@ -88,7 +88,7 @@ export class CommentHandler extends BaseHandler {
       const response = await client.execute<{
         commentDelete: {
           success: boolean;
-          id: string;
+          entityId: string;
         };
       }>(DELETE_COMMENT, {
         id: args.id,
@@ -165,10 +165,9 @@ export class CommentHandler extends BaseHandler {
       const response = await client.execute<{
         customerNeedCreateFromAttachment: {
           success: boolean;
-          customerNeed: {
+          need: {
             id: string;
-            title: string;
-            description?: string;
+            body?: string;
           };
         };
       }>(CREATE_CUSTOMER_NEED_FROM_ATTACHMENT, {
