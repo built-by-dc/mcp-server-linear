@@ -113,26 +113,123 @@ export const GET_ISSUES_BY_IDENTIFIER = gql`
             }
           }
         }
-        comments {
-          nodes {
-            id
-            body
-            user {
-              id
-              name
-              email
-            }
-            createdAt
-            updatedAt
-            resolvedAt
-            resolvingComment {
-              id
-              body
-            }
-          }
-        }
         createdAt
         updatedAt
+      }
+    }
+  }
+`;
+
+// Dedicated single-issue read. Returns the full body + structure, but only the
+// most recent N comments. Linear orders comments newest-first, so `first: N`
+// yields the latest N and hasNextPage signals older comments exist. Use
+// GET_ISSUE_COMMENTS_QUERY to page the rest.
+export const GET_ISSUE_QUERY = gql`
+  query GetIssue($id: String!, $commentLimit: Int) {
+    issue(id: $id) {
+      id
+      identifier
+      title
+      description
+      url
+      state {
+        id
+        name
+        type
+        color
+      }
+      assignee {
+        id
+        name
+        email
+      }
+      team {
+        id
+        name
+        key
+      }
+      project {
+        id
+        name
+      }
+      priority
+      labels {
+        nodes {
+          id
+          name
+          color
+        }
+      }
+      parent {
+        id
+        identifier
+        title
+        state {
+          name
+        }
+      }
+      children {
+        nodes {
+          id
+          identifier
+          title
+          state {
+            name
+          }
+        }
+      }
+      comments(first: $commentLimit) {
+        pageInfo {
+          hasNextPage
+        }
+        nodes {
+          id
+          body
+          user {
+            id
+            name
+          }
+          createdAt
+          resolvedAt
+          resolvingComment {
+            id
+          }
+        }
+      }
+      createdAt
+      updatedAt
+    }
+  }
+`;
+
+// Paginated full comment thread for a single issue (newest-first, as Linear
+// orders them; walk older with first/after).
+export const GET_ISSUE_COMMENTS_QUERY = gql`
+  query GetIssueComments($id: String!, $first: Int, $after: String) {
+    issue(id: $id) {
+      id
+      identifier
+      comments(first: $first, after: $after) {
+        pageInfo {
+          hasNextPage
+          endCursor
+        }
+        nodes {
+          id
+          body
+          user {
+            id
+            name
+            email
+          }
+          createdAt
+          updatedAt
+          resolvedAt
+          resolvingComment {
+            id
+            body
+          }
+        }
       }
     }
   }

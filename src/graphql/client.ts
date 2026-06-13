@@ -17,6 +17,8 @@ import {
   IssueRelationType,
   ListViewsResponse,
   GetViewIssuesResponse,
+  GetIssueResponse,
+  GetIssueCommentsResponse,
 } from "../features/issues/types/issue.types.js";
 import {
   ProjectInput,
@@ -208,6 +210,32 @@ export class LinearGraphQLClient {
     );
     // Normalise to the same shape as searchIssues so callers stay consistent
     return { issues: raw.searchIssues };
+  }
+
+  // Get a single issue with full body + the most recent N comments.
+  async getIssue(
+    id: string,
+    commentLimit: number = 5
+  ): Promise<GetIssueResponse> {
+    const { GET_ISSUE_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueResponse>(GET_ISSUE_QUERY, {
+      id,
+      commentLimit: Math.max(1, commentLimit),
+    });
+  }
+
+  // Get a single issue's full comment thread, paginated (oldest-first).
+  async getIssueComments(
+    id: string,
+    first: number = 50,
+    after?: string
+  ): Promise<GetIssueCommentsResponse> {
+    const { GET_ISSUE_COMMENTS_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueCommentsResponse>(GET_ISSUE_COMMENTS_QUERY, {
+      id,
+      first,
+      after,
+    });
   }
 
   // Get formal Linear relations (blocks/related/duplicate) for an issue.

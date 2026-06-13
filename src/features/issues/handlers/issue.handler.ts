@@ -30,6 +30,9 @@ import {
   GetViewIssuesInput,
   ListViewsResponse,
   GetViewIssuesResponse,
+  GetIssueCommentsInput,
+  GetIssueResponse,
+  GetIssueCommentsResponse,
 } from "../types/issue.types.js";
 import { DocumentNode } from "graphql";
 
@@ -297,30 +300,94 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
   }
 
   /**
-   * Get a single issue by identifier, including all comments
+   * Extract referenced issue identifiers (e.g. "TEH-123") from free text,
+   * deduped and excluding `self`. Surfaces a ticket's cross-links cheaply so
+   * agents can traverse the graph without reading full bodies.
+   */
+  private extractLinkedIdentifiers(text: string, self: string): string[] {
+    const matches = text.match(/\b[A-Z]{2,5}-\d+\b/g) ?? [];
+    return [...new Set(matches)].filter((id) => id !== self);
+  }
+
+  /**
+   * Get a single issue by identifier: full body + structure + cross-links, plus
+   * only the most recent N comments (default 5). Older comments are not
+   * included — `comments.hasMore` signals they exist; page them with
+   * linear_get_issue_comments. This keeps the common read lean while preserving
+   * the recent-discussion signal that flags already-resolved work.
    */
   async handleGetIssue(args: GetIssueInput): Promise<BaseToolResponse> {
     try {
       const client = this.verifyAuth();
       this.validateRequiredParams(args, ["identifier"]);
 
-      // Use the same query as search by identifier but with a single identifier
-      const result = (await client.searchIssues(
-        { identifier: { in: [args.identifier] } },
-        1,
-        undefined,
-        "updatedAt"
-      )) as SearchIssuesResponse;
+      const result = (await client.getIssue(
+        args.identifier,
+        args.commentLimit ?? 5
+      )) as GetIssueResponse;
 
-      if (!result.issues.nodes || result.issues.nodes.length === 0) {
+      if (!result.issue) {
+        throw new Error(`Issue ${args.identifier} not found`);
+      }
+
+      const issue = result.issue;
+      // Linear returns comments newest-first already.
+      const recentComments = issue.comments?.nodes ?? [];
+
+      // Cross-links from body + the comments we have.
+      const linkSource =
+        (issue.description ?? "") +
+        "\n" +
+        recentComments.map((c) => c.body).join("\n");
+      const linkedIdentifiers = this.extractLinkedIdentifiers(
+        linkSource,
+        issue.identifier
+      );
+
+      const { comments, ...issueRest } = issue;
+
+      return this.createJsonResponse({
+        issue: {
+          ...issueRest,
+          linkedIdentifiers,
+          comments: {
+            hasMore: issue.comments?.pageInfo?.hasNextPage ?? false,
+            returned: recentComments.length,
+            nodes: recentComments,
+          },
+        },
+      });
+    } catch (error) {
+      this.handleError(error, "get issue");
+    }
+  }
+
+  /**
+   * Get a single issue's full comment thread, paginated (oldest-first).
+   */
+  async handleGetIssueComments(
+    args: GetIssueCommentsInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["identifier"]);
+
+      const result = (await client.getIssueComments(
+        args.identifier,
+        args.first ?? 50,
+        args.after
+      )) as GetIssueCommentsResponse;
+
+      if (!result.issue) {
         throw new Error(`Issue ${args.identifier} not found`);
       }
 
       return this.createJsonResponse({
-        issue: result.issues.nodes[0],
+        identifier: result.issue.identifier,
+        comments: result.issue.comments,
       });
     } catch (error) {
-      this.handleError(error, "get issue");
+      this.handleError(error, "get issue comments");
     }
   }
 

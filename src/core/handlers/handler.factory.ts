@@ -130,6 +130,13 @@ export class HandlerFactory {
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
       },
+      [getToolName("linear_get_issue_comments")]: {
+        handler: this.issueHandler,
+        method: "handleGetIssueComments",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
       [getToolName("linear_get_issue_relations")]: {
         handler: this.issueHandler,
         method: "handleGetIssueRelations",

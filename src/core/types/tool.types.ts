@@ -618,7 +618,7 @@ export const toolSchemas = {
   [getToolName("linear_get_issue")]: {
     name: getToolName("linear_get_issue"),
     description: getToolDescription(
-      "Get a single issue by identifier, including all comments, parent, and child subtasks"
+      "Get a single issue: full body, metadata, parent/child subtasks, cross-linked issue identifiers, and the most recent comments (default 5, newest-first). Older comments are summarised by a `hasMore` flag — page them with linear_get_issue_comments. Raise commentLimit to pull more in one call."
     ),
     inputSchema: {
       type: "object",
@@ -626,6 +626,39 @@ export const toolSchemas = {
         identifier: {
           type: "string",
           description: "Issue identifier (e.g., 'ENG-123')",
+        },
+        commentLimit: {
+          type: "number",
+          description:
+            "Number of most-recent comments to include (default 5). Set higher to pull more of the thread inline.",
+          optional: true,
+        },
+      },
+      required: ["identifier"],
+    },
+  },
+
+  [getToolName("linear_get_issue_comments")]: {
+    name: getToolName("linear_get_issue_comments"),
+    description: getToolDescription(
+      "Get the full comment thread for an issue, paginated (oldest-first). Use after linear_get_issue when its `comments.hasMore` is true or you need the complete discussion history."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        identifier: {
+          type: "string",
+          description: "Issue identifier (e.g., 'ENG-123')",
+        },
+        first: {
+          type: "number",
+          description: "Comments per page (default 50)",
+          optional: true,
+        },
+        after: {
+          type: "string",
+          description: "Pagination cursor (from prior pageInfo.endCursor)",
+          optional: true,
         },
       },
       required: ["identifier"],
@@ -1302,12 +1335,6 @@ export const toolSchemas = {
           type: "string",
           description:
             "Document body as Markdown. Use real newlines, not \\n. Mention users with @displayName.",
-          optional: true,
-        },
-        icon: {
-          type: "string",
-          description:
-            "Linear icon NAME (not an emoji), e.g. 'Document', 'Inbox'. Emoji are rejected by Linear and will be ignored. Omit if unsure.",
           optional: true,
         },
         color: {

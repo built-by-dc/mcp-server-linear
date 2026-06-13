@@ -105,15 +105,10 @@ export class DocumentHandler extends BaseHandler {
       const input: Record<string, unknown> = {};
       if (args.title !== undefined) input.title = args.title;
       if (args.content !== undefined) input.content = args.content;
-      // Linear's `icon` field accepts only named Linear icons (ASCII), not
-      // emoji. Passing an emoji throws "icon is not a valid icon" and fails the
-      // whole save, so drop any non-ASCII/emoji icon rather than break the write.
-      if (args.icon !== undefined && args.icon !== null) {
-        const isAsciiIconName = /^[\x20-\x7E]+$/.test(args.icon);
-        if (isAsciiIconName) {
-          input.icon = args.icon;
-        }
-      }
+      // `icon` is intentionally not forwarded: Linear's document icon accepts
+      // only names from its own icon set (e.g. "Rocket", "Home") — not emoji and
+      // not arbitrary words like "Document". The valid set isn't enumerable via
+      // the API and a bad value fails the whole save, so the field is omitted.
       if (args.color !== undefined) input.color = args.color;
       if (args.projectId !== undefined) input.projectId = args.projectId;
       if (args.initiativeId !== undefined)

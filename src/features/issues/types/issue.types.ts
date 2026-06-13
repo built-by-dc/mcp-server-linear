@@ -95,6 +95,46 @@ export interface SearchIssuesByIdentifierInput {
 
 export interface GetIssueInput {
   identifier: string;
+  commentLimit?: number; // Most-recent comments to include (default 5)
+}
+
+export interface GetIssueCommentsInput {
+  identifier: string;
+  first?: number;
+  after?: string;
+}
+
+interface IssueCommentNode {
+  id: string;
+  body: string;
+  user?: { id: string; name: string; email?: string } | null;
+  createdAt: string;
+  updatedAt?: string;
+  resolvedAt?: string | null;
+  resolvingComment?: { id: string; body?: string } | null;
+}
+
+export interface GetIssueResponse {
+  issue:
+    | (Issue & {
+        description?: string | null;
+        comments?: {
+          pageInfo: { hasNextPage: boolean };
+          nodes: IssueCommentNode[];
+        };
+      })
+    | null;
+}
+
+export interface GetIssueCommentsResponse {
+  issue: {
+    id: string;
+    identifier: string;
+    comments: {
+      pageInfo: { hasNextPage: boolean; endCursor: string | null };
+      nodes: IssueCommentNode[];
+    };
+  } | null;
 }
 
 export interface GetIssueRelationsInput {
@@ -337,4 +377,7 @@ export interface IssueHandlerMethods {
   ): Promise<BaseToolResponse>;
   handleListViews(args: ListViewsInput): Promise<BaseToolResponse>;
   handleGetViewIssues(args: GetViewIssuesInput): Promise<BaseToolResponse>;
+  handleGetIssueComments(
+    args: GetIssueCommentsInput
+  ): Promise<BaseToolResponse>;
 }
