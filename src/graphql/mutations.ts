@@ -14,6 +14,25 @@ export const CREATE_ISSUE_MUTATION = gql`
   }
 `;
 
+export const SET_ISSUE_CYCLE_MUTATION = gql`
+  mutation SetIssueCycle($id: String!, $input: IssueUpdateInput!) {
+    issueUpdate(id: $id, input: $input) {
+      success
+      issue {
+        id
+        identifier
+        title
+        cycle {
+          id
+          number
+          name
+          isActive
+        }
+      }
+    }
+  }
+`;
+
 export const CREATE_VIEW_MUTATION = gql`
   mutation CreateView($input: CustomViewCreateInput!) {
     customViewCreate(input: $input) {

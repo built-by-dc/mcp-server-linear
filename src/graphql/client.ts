@@ -20,6 +20,8 @@ import {
   CreateViewResponse,
   UpdateViewResponse,
   DeleteViewResponse,
+  ListCyclesResponse,
+  SetIssueCycleResponse,
   GetIssueResponse,
   GetIssueCommentsResponse,
 } from "../features/issues/types/issue.types.js";
@@ -75,6 +77,30 @@ export class LinearGraphQLClient {
   async createIssue(input: CreateIssueInput): Promise<CreateIssueResponse> {
     const { CREATE_ISSUE_MUTATION } = await import("./mutations.js");
     return this.execute<CreateIssueResponse>(CREATE_ISSUE_MUTATION, { input });
+  }
+
+  // List cycles, optionally filtered (e.g. by team or isActive/isNext flags).
+  async listCycles(
+    filter: Record<string, unknown> | undefined,
+    first: number = 50
+  ): Promise<ListCyclesResponse> {
+    const { LIST_CYCLES_QUERY } = await import("./queries.js");
+    return this.execute<ListCyclesResponse>(LIST_CYCLES_QUERY, {
+      filter,
+      first,
+    });
+  }
+
+  // Set (or clear, with cycleId=null) an issue's cycle.
+  async setIssueCycle(
+    id: string,
+    cycleId: string | null
+  ): Promise<SetIssueCycleResponse> {
+    const { SET_ISSUE_CYCLE_MUTATION } = await import("./mutations.js");
+    return this.execute<SetIssueCycleResponse>(SET_ISSUE_CYCLE_MUTATION, {
+      id,
+      input: { cycleId },
+    });
   }
 
   // Create a custom view. `input` is the Linear CustomViewCreateInput

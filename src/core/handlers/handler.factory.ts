@@ -193,6 +193,20 @@ export class HandlerFactory {
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
       },
+      [getToolName("linear_list_cycles")]: {
+        handler: this.issueHandler,
+        method: "handleListCycles",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_set_issue_cycle")]: {
+        handler: this.issueHandler,
+        method: "handleSetIssueCycle",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
       [getToolName("linear_delete_issue")]: {
         handler: this.issueHandler,
         method: "handleDeleteIssue",

@@ -132,6 +132,32 @@ export const GET_ISSUES_BY_IDENTIFIER = gql`
 // most recent N comments. Linear orders comments newest-first, so `first: N`
 // yields the latest N and hasNextPage signals older comments exist. Use
 // GET_ISSUE_COMMENTS_QUERY to page the rest.
+export const LIST_CYCLES_QUERY = gql`
+  query ListCycles($filter: CycleFilter, $first: Int) {
+    cycles(filter: $filter, first: $first) {
+      nodes {
+        id
+        number
+        name
+        startsAt
+        endsAt
+        completedAt
+        isActive
+        isNext
+        isPrevious
+        isPast
+        isFuture
+        progress
+        team {
+          id
+          key
+          name
+        }
+      }
+    }
+  }
+`;
+
 export const GET_ISSUE_QUERY = gql`
   query GetIssue($id: String!, $commentLimit: Int) {
     issue(id: $id) {

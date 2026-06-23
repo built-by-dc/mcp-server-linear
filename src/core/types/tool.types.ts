@@ -163,6 +163,18 @@ const VIEW_FILTER_PROPERTIES = {
       "Only subtasks whose parent is NOT in any of these state names.",
     optional: true,
   },
+  cycle: {
+    type: "string",
+    description:
+      "Cycle membership: 'current' | 'next' | 'previous' | 'none' (no cycle) | a cycle UUID. E.g. cycle:'current' for committed work; cycle:'none' for uncommitted.",
+    optional: true,
+  },
+  notCycle: {
+    type: "string",
+    description:
+      "Negated cycle membership (same vocabulary as `cycle`). E.g. notCycle:'current' for work NOT in the active cycle (off-plan). Ignored if `cycle` is set.",
+    optional: true,
+  },
 } as const;
 
 export const toolSchemas = {
@@ -908,6 +920,62 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+    },
+  },
+
+  [getToolName("linear_list_cycles")]: {
+    name: getToolName("linear_list_cycles"),
+    description: getToolDescription(
+      "List cycles (sprints) with their IDs, dates, progress, and isActive/isNext/isPrevious flags. Use to find the current cycle's UUID or to drive cycle-membership Views. Optionally scope by team or position."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        teamId: {
+          type: "string",
+          description: "Scope to a team (UUID)",
+          optional: true,
+        },
+        filter: {
+          type: "string",
+          enum: ["current", "next", "previous", "past", "future"],
+          description: "Only the cycle(s) at this position",
+          optional: true,
+        },
+        first: {
+          type: "number",
+          description: "Max cycles to return (default 50)",
+          optional: true,
+        },
+      },
+    },
+  },
+
+  [getToolName("linear_set_issue_cycle")]: {
+    name: getToolName("linear_set_issue_cycle"),
+    description: getToolDescription(
+      "Assign (or clear) an issue's cycle. `cycle` accepts a cycle UUID, 'none' (unassign), or a keyword 'current'/'next'/'previous' (resolved to the matching cycle for the issue's team). For loop-controlled cycle membership with auto-add disabled."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        issueId: {
+          type: "string",
+          description: "Issue UUID",
+        },
+        cycle: {
+          type: "string",
+          description:
+            "'current' | 'next' | 'previous' | 'none' | a cycle UUID",
+        },
+        teamId: {
+          type: "string",
+          description:
+            "Disambiguate current/next/previous in a multi-team workspace (UUID)",
+          optional: true,
+        },
+      },
+      required: ["issueId", "cycle"],
     },
   },
 

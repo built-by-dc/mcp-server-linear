@@ -361,6 +361,8 @@ export interface IssueFilterParams {
   noParent?: boolean;
   parentStates?: string[]; // parent's workflow-state name in [...] (parent.state.name.in)
   notParentStates?: string[]; // parent's state name nin [...] (parent.state.name.nin)
+  cycle?: string; // membership: "current" | "next" | "previous" | "none" | <cycle UUID>
+  notCycle?: string; // negated membership (same vocabulary; ignored if `cycle` set)
 }
 
 export interface CreateViewInput extends IssueFilterParams {
@@ -402,6 +404,55 @@ export interface UpdateViewResponse {
 
 export interface DeleteViewResponse {
   customViewDelete: { success: boolean };
+}
+
+export interface ListCyclesInput {
+  teamId?: string; // Scope to a team (UUID)
+  filter?: "current" | "next" | "previous" | "past" | "future"; // convenience flag filter
+  first?: number;
+}
+
+interface CycleNode {
+  id: string;
+  number: number;
+  name?: string | null;
+  startsAt: string;
+  endsAt: string;
+  completedAt?: string | null;
+  isActive: boolean;
+  isNext: boolean;
+  isPrevious: boolean;
+  isPast: boolean;
+  isFuture: boolean;
+  progress: number;
+  team?: { id: string; key: string; name: string } | null;
+}
+
+export interface ListCyclesResponse {
+  cycles: { nodes: CycleNode[] };
+}
+
+export interface SetIssueCycleInput {
+  issueId: string; // Issue UUID
+  cycle: string; // "current" | "next" | "previous" | "none" | <cycle UUID>
+  teamId?: string; // Disambiguate current/next/previous in a multi-team workspace
+}
+
+export interface SetIssueCycleResponse {
+  issueUpdate: {
+    success: boolean;
+    issue: {
+      id: string;
+      identifier: string;
+      title: string;
+      cycle?: {
+        id: string;
+        number: number;
+        name?: string | null;
+        isActive: boolean;
+      } | null;
+    };
+  };
 }
 
 export interface CreateIssueRelationResponse {
@@ -446,6 +497,8 @@ export interface IssueHandlerMethods {
   handleCreateView(args: CreateViewInput): Promise<BaseToolResponse>;
   handleUpdateView(args: UpdateViewInput): Promise<BaseToolResponse>;
   handleDeleteView(args: DeleteViewInput): Promise<BaseToolResponse>;
+  handleListCycles(args: ListCyclesInput): Promise<BaseToolResponse>;
+  handleSetIssueCycle(args: SetIssueCycleInput): Promise<BaseToolResponse>;
   handleGetIssueComments(
     args: GetIssueCommentsInput
   ): Promise<BaseToolResponse>;

@@ -37,6 +37,10 @@ import {
   CreateViewResponse,
   UpdateViewResponse,
   DeleteViewResponse,
+  ListCyclesInput,
+  ListCyclesResponse,
+  SetIssueCycleInput,
+  SetIssueCycleResponse,
   GetIssueCommentsInput,
   GetIssueResponse,
   GetIssueCommentsResponse,
@@ -264,6 +268,31 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
         parent.state = { name };
       }
       if (Object.keys(parent).length) filter.parent = parent;
+    }
+
+    // Cycle membership. `cycle` (positive) wins over `notCycle` (negated).
+    // Keywords map to Linear's NullableCycleFilter boolean flags; "none" maps
+    // to null (no cycle); anything else is treated as a cycle UUID.
+    const cycleClause = (
+      v: string,
+      negate: boolean
+    ): Record<string, unknown> => {
+      if (v === "none") return { null: !negate };
+      const flag =
+        v === "current"
+          ? "isActive"
+          : v === "next"
+          ? "isNext"
+          : v === "previous"
+          ? "isPrevious"
+          : null;
+      if (flag) return { [flag]: negate ? { neq: true } : { eq: true } };
+      return { id: negate ? { neq: v } : { eq: v } };
+    };
+    if (args.cycle) {
+      filter.cycle = cycleClause(args.cycle, false);
+    } else if (args.notCycle) {
+      filter.cycle = cycleClause(args.notCycle, true);
     }
 
     return filter;
@@ -785,6 +814,96 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       return this.createJsonResponse(result.customViewDelete);
     } catch (error) {
       this.handleError(error, "delete view");
+    }
+  }
+
+  /**
+   * Map a cycle keyword to its NullableCycleFilter boolean flag.
+   */
+  private cycleFlag(keyword: string): "isActive" | "isNext" | "isPrevious" | null {
+    return keyword === "current"
+      ? "isActive"
+      : keyword === "next"
+      ? "isNext"
+      : keyword === "previous"
+      ? "isPrevious"
+      : null;
+  }
+
+  /**
+   * List cycles, optionally scoped to a team and/or a position
+   * (current/next/previous/past/future). Each node carries the isActive/isNext/
+   * isPrevious flags so callers can pick the one they mean.
+   */
+  async handleListCycles(args: ListCyclesInput): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+
+      const filter: Record<string, unknown> = {};
+      if (args.teamId) filter.team = { id: { eq: args.teamId } };
+      if (args.filter) {
+        const flag = this.cycleFlag(args.filter);
+        if (flag) filter[flag] = { eq: true };
+        else if (args.filter === "past") filter.isPast = { eq: true };
+        else if (args.filter === "future") filter.isFuture = { eq: true };
+      }
+
+      const result = (await client.listCycles(
+        Object.keys(filter).length ? filter : undefined,
+        args.first ?? 50
+      )) as ListCyclesResponse;
+
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "list cycles");
+    }
+  }
+
+  /**
+   * Set (or clear) an issue's cycle. `cycle` accepts a UUID, "none" (unassign),
+   * or a keyword (current/next/previous) which is resolved to the matching
+   * cycle for the issue's team. Pass teamId to disambiguate in a multi-team
+   * workspace.
+   */
+  async handleSetIssueCycle(
+    args: SetIssueCycleInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["issueId", "cycle"]);
+
+      let cycleId: string | null;
+      if (args.cycle === "none") {
+        cycleId = null;
+      } else {
+        const flag = this.cycleFlag(args.cycle);
+        if (flag) {
+          const filter: Record<string, unknown> = { [flag]: { eq: true } };
+          if (args.teamId) filter.team = { id: { eq: args.teamId } };
+          const cycles = (await client.listCycles(filter, 10))
+            .cycles.nodes;
+          if (!cycles.length) {
+            throw new Error(`No "${args.cycle}" cycle found`);
+          }
+          if (cycles.length > 1) {
+            throw new Error(
+              `Ambiguous "${args.cycle}" cycle across ${cycles.length} teams — pass teamId`
+            );
+          }
+          cycleId = cycles[0].id;
+        } else {
+          // Treat as a cycle UUID.
+          cycleId = args.cycle;
+        }
+      }
+
+      const result = (await client.setIssueCycle(
+        args.issueId,
+        cycleId
+      )) as SetIssueCycleResponse;
+      return this.createJsonResponse(result.issueUpdate);
+    } catch (error) {
+      this.handleError(error, "set issue cycle");
     }
   }
 
