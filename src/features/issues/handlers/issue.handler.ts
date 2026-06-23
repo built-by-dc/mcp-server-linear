@@ -85,6 +85,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
         issueCreate: {
           success: true,
           issue: {
+            id: issue.id,
             identifier: issue.identifier,
             title: issue.title,
             url: issue.url,
