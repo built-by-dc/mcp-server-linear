@@ -39,6 +39,10 @@ export const SEARCH_ISSUES_QUERY = gql`
           name
         }
         priority
+        parent {
+          id
+          identifier
+        }
         labels {
           nodes {
             id
@@ -91,6 +95,10 @@ export const GET_ISSUES_BY_IDENTIFIER = gql`
           name
         }
         priority
+        parent {
+          id
+          identifier
+        }
         labels {
           nodes {
             id
@@ -333,6 +341,10 @@ export const FULLTEXT_SEARCH_ISSUES_QUERY = gql`
           name
         }
         priority
+        parent {
+          id
+          identifier
+        }
         labels {
           nodes {
             id
@@ -640,6 +652,10 @@ export const GET_VIEW_ISSUES_QUERY = gql`
             name
           }
           priority
+          parent {
+            id
+            identifier
+          }
           labels {
             nodes {
               id
