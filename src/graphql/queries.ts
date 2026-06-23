@@ -583,8 +583,12 @@ export const LIST_VIEWS_QUERY = gql`
       nodes {
         id
         name
+        slugId
         description
         shared
+        organization {
+          urlKey
+        }
         team {
           id
           key

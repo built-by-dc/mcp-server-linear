@@ -308,8 +308,10 @@ export interface ListViewsResponse {
     nodes: {
       id: string;
       name: string;
+      slugId?: string | null;
       description?: string | null;
       shared: boolean;
+      organization?: { urlKey?: string | null } | null;
       team?: { id: string; key: string; name: string } | null;
       creator?: { id: string; name: string } | null;
       updatedAt: string;
@@ -382,7 +384,12 @@ export interface DeleteViewInput {
 
 interface ViewMutationResult {
   success: boolean;
-  customView: { id: string; name: string };
+  customView: {
+    id: string;
+    name: string;
+    slugId?: string | null;
+    organization?: { urlKey?: string | null } | null;
+  };
 }
 
 export interface CreateViewResponse {

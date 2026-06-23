@@ -384,6 +384,40 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
    * the comment was about. The full text is available via
    * linear_get_issue_comments.
    */
+  /**
+   * Build the human-readable browser URL for a custom view. CustomView has no
+   * `url` field, but the view is reachable at
+   * linear.app/{org urlKey}/view/{slugId}. Returns null if either part is
+   * missing.
+   */
+  private viewUrl(
+    slugId?: string | null,
+    urlKey?: string | null
+  ): string | null {
+    if (!slugId || !urlKey) return null;
+    return `https://linear.app/${urlKey}/view/${slugId}`;
+  }
+
+  /**
+   * Reshape a customView mutation result: replace the nested `organization`
+   * with a flat, ready-to-open `url` built from slugId + org urlKey.
+   */
+  private shapeViewResult(r: {
+    success: boolean;
+    customView: {
+      id: string;
+      name: string;
+      slugId?: string | null;
+      organization?: { urlKey?: string | null } | null;
+    };
+  }): Record<string, unknown> {
+    const { organization, ...cv } = r.customView;
+    return {
+      success: r.success,
+      customView: { ...cv, url: this.viewUrl(cv.slugId, organization?.urlKey) },
+    };
+  }
+
   private truncateBody(body: string, max = 800): string {
     if (!body || body.length <= max) return body;
     return `${body.slice(0, max)}\n…[truncated ${
@@ -639,7 +673,15 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       const result = (await client.listViews(
         args.first ?? 50
       )) as ListViewsResponse;
-      return this.createJsonResponse(result);
+      // Attach a ready-to-open url (built from slugId + org urlKey) to each
+      // node and drop the nested organization object.
+      const nodes = result.customViews.nodes.map((n) => {
+        const { organization, ...rest } = n;
+        return { ...rest, url: this.viewUrl(n.slugId, organization?.urlKey) };
+      });
+      return this.createJsonResponse({
+        customViews: { ...result.customViews, nodes },
+      });
     } catch (error) {
       this.handleError(error, "list views");
     }
@@ -695,7 +737,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       if (Object.keys(filter).length) input.filterData = filter;
 
       const result = (await client.createView(input)) as CreateViewResponse;
-      return this.createJsonResponse(result.customViewCreate);
+      return this.createJsonResponse(this.shapeViewResult(result.customViewCreate));
     } catch (error) {
       this.handleError(error, "create view");
     }
@@ -725,7 +767,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
         args.id,
         input
       )) as UpdateViewResponse;
-      return this.createJsonResponse(result.customViewUpdate);
+      return this.createJsonResponse(this.shapeViewResult(result.customViewUpdate));
     } catch (error) {
       this.handleError(error, "update view");
     }

@@ -21,6 +21,10 @@ export const CREATE_VIEW_MUTATION = gql`
       customView {
         id
         name
+        slugId
+        organization {
+          urlKey
+        }
       }
     }
   }
@@ -33,6 +37,10 @@ export const UPDATE_VIEW_MUTATION = gql`
       customView {
         id
         name
+        slugId
+        organization {
+          urlKey
+        }
       }
     }
   }
