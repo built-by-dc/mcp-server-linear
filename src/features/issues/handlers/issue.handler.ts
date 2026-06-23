@@ -196,13 +196,31 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
     if (Object.keys(state).length) filter.state = state;
 
     if (typeof args.priority === "number") filter.priority = { eq: args.priority };
-    if (args.projectId) filter.project = { id: { eq: args.projectId } };
 
-    // labelIds (UUIDs) take precedence over labels (names); ANY-match.
-    if (args.labelIds?.length) {
-      filter.labels = { some: { id: { in: args.labelIds } } };
-    } else if (args.labels?.length) {
-      filter.labels = { some: { name: { in: args.labels } } };
+    // Project: noProject (project = none) takes precedence over projectId.
+    if (args.noProject) {
+      filter.project = { null: true };
+    } else if (args.projectId) {
+      filter.project = { id: { eq: args.projectId } };
+    }
+
+    // Labels. noLabels (zero labels) is exclusive and wins. Otherwise an
+    // include clause (labelIds UUIDs take precedence over names, ANY-match via
+    // `some`) and an exclude clause (notLabels via `every.name.nin` — issue has
+    // NONE of these; unlabelled issues match vacuously) combine as AND.
+    if (args.noLabels) {
+      filter.labels = { length: { eq: 0 } };
+    } else {
+      const labels: Record<string, unknown> = {};
+      if (args.labelIds?.length) {
+        labels.some = { id: { in: args.labelIds } };
+      } else if (args.labels?.length) {
+        labels.some = { name: { in: args.labels } };
+      }
+      if (args.notLabels?.length) {
+        labels.every = { name: { nin: args.notLabels } };
+      }
+      if (Object.keys(labels).length) filter.labels = labels;
     }
 
     // updatedAt window: gte (updatedSince) and/or lte (updatedBefore), merged.
@@ -217,11 +235,22 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
     if (args.blocked) filter.hasBlockedByRelations = { eq: true };
     if (args.blocking) filter.hasBlockingRelations = { eq: true };
 
-    // Orphan (no parent) takes precedence over parentId (subtasks of X).
+    // Parent. noParent (no parent at all) takes precedence. Otherwise combine
+    // parentId (subtasks of X) with parent-state filters (parentStates /
+    // notParentStates → parent.state.name in/nin) — e.g. "child whose parent is
+    // Done/Canceled" surfaces orphaned-by-closed-parent work.
     if (args.noParent) {
       filter.parent = { null: true };
-    } else if (args.parentId) {
-      filter.parent = { id: { eq: args.parentId } };
+    } else {
+      const parent: Record<string, unknown> = {};
+      if (args.parentId) parent.id = { eq: args.parentId };
+      if (args.parentStates || args.notParentStates) {
+        const name: Record<string, unknown> = {};
+        if (args.parentStates) name.in = args.parentStates;
+        if (args.notParentStates) name.nin = args.notParentStates;
+        parent.state = { name };
+      }
+      if (Object.keys(parent).length) filter.parent = parent;
     }
 
     return filter;
@@ -256,6 +285,16 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
             args.after,
             args.orderBy || "updatedAt"
           )) as SearchIssuesResponse;
+
+      // Lean by default: drop full issue bodies, which otherwise dominate the
+      // payload and blow the context window on broad searches. Set lean:false
+      // to opt back in. get_issue remains the way to read a single full body.
+      if (args.lean !== false && result?.issues?.nodes) {
+        result.issues.nodes = result.issues.nodes.map((n) => {
+          const { description, ...rest } = n as { description?: unknown };
+          return rest;
+        }) as typeof result.issues.nodes;
+      }
 
       return this.createJsonResponse(result);
     } catch (error) {

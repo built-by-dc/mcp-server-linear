@@ -35,7 +35,11 @@ export interface BulkUpdateIssuesInput {
   update: UpdateIssueInput;
 }
 
-export interface SearchIssuesInput {
+// Inherits the full flat filter vocabulary (teamIds, states/notStates,
+// labels/notLabels/noLabels, projectId/noProject, updatedSince/updatedBefore,
+// parentId/parentStates/notParentStates, etc.) from IssueFilterParams so the
+// search tool stays symmetric with the view tools.
+export interface SearchIssuesInput extends IssueFilterParams {
   query?: string;
   filter?: {
     project?: {
@@ -47,21 +51,7 @@ export interface SearchIssuesInput {
       in: string[];
     };
   };
-  teamIds?: string[];
-  assigneeIds?: string[];
-  unassigned?: boolean; // Only issues with no assignee
-  states?: string[];
-  stateTypes?: string[]; // backlog|unstarted|started|completed|canceled
-  priority?: number;
-  projectId?: string; // Filter to a single project (UUID)
-  labelIds?: string[]; // Issues having ANY of these label UUIDs
-  labels?: string[]; // Issues having ANY of these label names
-  updatedSince?: string; // ISO-8601; updatedAt >= this
-  createdSince?: string; // ISO-8601; createdAt >= this
-  blocked?: boolean; // Only issues blocked by another (hasBlockedByRelations)
-  blocking?: boolean; // Only issues blocking another (hasBlockingRelations)
-  parentId?: string; // Subtasks of this parent (UUID)
-  noParent?: boolean; // Only top-level issues (no parent)
+  lean?: boolean; // Omit issue descriptions from results (default true)
   first?: number;
   after?: string;
   orderBy?: string;
@@ -353,8 +343,11 @@ export interface IssueFilterParams {
   stateTypes?: string[];
   priority?: number;
   projectId?: string;
+  noProject?: boolean; // project = none (project.null)
   labelIds?: string[];
   labels?: string[];
+  notLabels?: string[]; // issue has NONE of these label names (labels.every.name.nin)
+  noLabels?: boolean; // zero labels (labels.length eq 0)
   updatedSince?: string;
   updatedBefore?: string; // updatedAt <= this (ISO-8601 or relative duration)
   createdSince?: string;
@@ -362,6 +355,8 @@ export interface IssueFilterParams {
   blocking?: boolean;
   parentId?: string;
   noParent?: boolean;
+  parentStates?: string[]; // parent's workflow-state name in [...] (parent.state.name.in)
+  notParentStates?: string[]; // parent's state name nin [...] (parent.state.name.nin)
 }
 
 export interface CreateViewInput extends IssueFilterParams {

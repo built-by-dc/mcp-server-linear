@@ -68,6 +68,12 @@ const VIEW_FILTER_PROPERTIES = {
     description: "Filter to a single project (UUID)",
     optional: true,
   },
+  noProject: {
+    type: "boolean",
+    description:
+      "Only issues with no project assigned. Overrides projectId.",
+    optional: true,
+  },
   labels: {
     type: "array",
     items: { type: "string" },
@@ -79,6 +85,19 @@ const VIEW_FILTER_PROPERTIES = {
     items: { type: "string" },
     description:
       "Filter to issues having ANY of these label UUIDs. Takes precedence over `labels`.",
+    optional: true,
+  },
+  notLabels: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Exclude issues carrying ANY of these label names (issue must have NONE of them; unlabelled issues pass). Combines with label includes.",
+    optional: true,
+  },
+  noLabels: {
+    type: "boolean",
+    description:
+      "Only issues with zero labels. Exclusive — overrides all other label filters.",
     optional: true,
   },
   updatedSince: {
@@ -116,6 +135,20 @@ const VIEW_FILTER_PROPERTIES = {
   noParent: {
     type: "boolean",
     description: "Only top-level issues (no parent). Overrides parentId.",
+    optional: true,
+  },
+  parentStates: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Only subtasks whose PARENT is in one of these workflow-state names (e.g. ['Done','Canceled'] surfaces children orphaned by a closed parent).",
+    optional: true,
+  },
+  notParentStates: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Only subtasks whose parent is NOT in any of these state names.",
     optional: true,
   },
 } as const;
@@ -453,107 +486,14 @@ export const toolSchemas = {
           description: "Search query string",
           optional: true,
         },
-        teamIds: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "Filter by team IDs",
-          optional: true,
-        },
-        assigneeIds: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "Filter by assignee IDs",
-          optional: true,
-        },
-        states: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "Filter by state names",
-          optional: true,
-        },
-        priority: {
-          type: "number",
-          description: "Filter by priority (0-4)",
-          optional: true,
-        },
-        projectId: {
-          type: "string",
-          description: "Filter to a single project (UUID)",
-          optional: true,
-        },
-        labels: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Filter to issues having ANY of these label names (e.g. ['Bug', 'WS: Documentation / Runbooks'])",
-          optional: true,
-        },
-        labelIds: {
-          type: "array",
-          items: { type: "string" },
-          description:
-            "Filter to issues having ANY of these label UUIDs. Takes precedence over `labels`.",
-          optional: true,
-        },
-        unassigned: {
-          type: "boolean",
-          description: "Only issues with no assignee. Overrides assigneeIds.",
-          optional: true,
-        },
-        stateTypes: {
-          type: "array",
-          items: {
-            type: "string",
-            enum: [
-              "backlog",
-              "unstarted",
-              "started",
-              "completed",
-              "canceled",
-            ],
-          },
-          description:
-            "Filter by workflow state TYPE (team-independent). E.g. ['started','unstarted'] for open work, ['completed'] for done. Combines with `states` (names).",
-          optional: true,
-        },
-        updatedSince: {
-          type: "string",
-          description:
-            "Only issues updated on/after this ISO-8601 timestamp (e.g. 2026-06-01T00:00:00Z)",
-          optional: true,
-        },
-        createdSince: {
-          type: "string",
-          description: "Only issues created on/after this ISO-8601 timestamp",
-          optional: true,
-        },
-        blocked: {
+        // Full filter vocabulary, symmetric with linear_create_view /
+        // linear_update_view (includes notStates, notLabels, noLabels,
+        // noProject, parentStates/notParentStates, updatedBefore).
+        ...VIEW_FILTER_PROPERTIES,
+        lean: {
           type: "boolean",
           description:
-            "Only issues that are blocked by another issue (has a blocked-by relation)",
-          optional: true,
-        },
-        blocking: {
-          type: "boolean",
-          description:
-            "Only issues that block another issue (has a blocking relation)",
-          optional: true,
-        },
-        parentId: {
-          type: "string",
-          description: "Only subtasks of this parent issue (UUID)",
-          optional: true,
-        },
-        noParent: {
-          type: "boolean",
-          description:
-            "Only top-level issues (no parent). Overrides parentId.",
+            "Omit issue descriptions from results (default true) to protect the context window. Set false to include full bodies.",
           optional: true,
         },
         first: {
