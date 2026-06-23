@@ -223,11 +223,24 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       if (Object.keys(labels).length) filter.labels = labels;
     }
 
-    // updatedAt window: gte (updatedSince) and/or lte (updatedBefore), merged.
-    if (args.updatedSince || args.updatedBefore) {
+    // updatedAt window. Absolute bounds (updatedSince/updatedBefore — ISO-8601
+    // or a relative duration like "-P7D") win; the *DaysAgo sugar emits the
+    // relative duration for callers who just want "rolling last N days" /
+    // "stale > N days" without hand-writing -PnD.
+    const gte =
+      args.updatedSince ??
+      (typeof args.updatedWithinDays === "number"
+        ? `-P${args.updatedWithinDays}D`
+        : undefined);
+    const lte =
+      args.updatedBefore ??
+      (typeof args.updatedMoreThanDaysAgo === "number"
+        ? `-P${args.updatedMoreThanDaysAgo}D`
+        : undefined);
+    if (gte || lte) {
       const updatedAt: Record<string, unknown> = {};
-      if (args.updatedSince) updatedAt.gte = args.updatedSince;
-      if (args.updatedBefore) updatedAt.lte = args.updatedBefore;
+      if (gte) updatedAt.gte = gte;
+      if (lte) updatedAt.lte = lte;
       filter.updatedAt = updatedAt;
     }
     if (args.createdSince) filter.createdAt = { gte: args.createdSince };
@@ -678,6 +691,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       const input: Record<string, unknown> = { name: args.name };
       if (args.description !== undefined) input.description = args.description;
       if (args.teamId !== undefined) input.teamId = args.teamId;
+      if (args.shared !== undefined) input.shared = args.shared;
       if (Object.keys(filter).length) input.filterData = filter;
 
       const result = (await client.createView(input)) as CreateViewResponse;
@@ -702,6 +716,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       if (args.name !== undefined) input.name = args.name;
       if (args.description !== undefined) input.description = args.description;
       if (args.teamId !== undefined) input.teamId = args.teamId;
+      if (args.shared !== undefined) input.shared = args.shared;
 
       const filter = this.buildIssueFilter(args);
       if (Object.keys(filter).length) input.filterData = filter;

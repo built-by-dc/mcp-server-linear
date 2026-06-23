@@ -109,7 +109,19 @@ const VIEW_FILTER_PROPERTIES = {
   updatedBefore: {
     type: "string",
     description:
-      "Upper bound: only issues updated on/before this (ISO-8601 timestamp). Combine with updatedSince to express 'active in window X but not since Y' (stale work).",
+      "Upper bound: only issues updated on/before this (ISO-8601 timestamp, OR a relative duration like '-P7D'). Combine with updatedSince to express 'active in window X but not since Y' (stale work).",
+    optional: true,
+  },
+  updatedWithinDays: {
+    type: "number",
+    description:
+      "Sugar for a rolling lower bound: issues updated within the last N days (emits updatedAt >= -PND). Saved views roll forward automatically. Overridden by updatedSince.",
+    optional: true,
+  },
+  updatedMoreThanDaysAgo: {
+    type: "number",
+    description:
+      "Sugar for a rolling upper bound: issues NOT touched in the last N days (emits updatedAt <= -PND) — i.e. 'stale > N days'. Saved views roll forward automatically. Overridden by updatedBefore.",
     optional: true,
   },
   createdSince: {
@@ -835,6 +847,12 @@ export const toolSchemas = {
             "Scope the view to this team (UUID). Omit for a workspace-shared view.",
           optional: true,
         },
+        shared: {
+          type: "boolean",
+          description:
+            "Shared (team-visible in the Linear Views nav) vs private. API-created views default to private and DON'T appear in the sidebar for anyone — set true for team-visible loop instruments.",
+          optional: true,
+        },
         ...VIEW_FILTER_PROPERTIES,
       },
       required: ["name"],
@@ -862,6 +880,12 @@ export const toolSchemas = {
         teamId: {
           type: "string",
           description: "Re-scope to this team (UUID)",
+          optional: true,
+        },
+        shared: {
+          type: "boolean",
+          description:
+            "Set true to make the view team-visible in the Linear Views nav (API-created views default private/hidden).",
           optional: true,
         },
         ...VIEW_FILTER_PROPERTIES,

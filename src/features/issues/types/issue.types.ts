@@ -350,6 +350,8 @@ export interface IssueFilterParams {
   noLabels?: boolean; // zero labels (labels.length eq 0)
   updatedSince?: string;
   updatedBefore?: string; // updatedAt <= this (ISO-8601 or relative duration)
+  updatedWithinDays?: number; // sugar: updatedAt >= -P{n}D (rolling)
+  updatedMoreThanDaysAgo?: number; // sugar: updatedAt <= -P{n}D (rolling "stale")
   createdSince?: string;
   blocked?: boolean;
   blocking?: boolean;
@@ -363,6 +365,7 @@ export interface CreateViewInput extends IssueFilterParams {
   name: string;
   description?: string;
   teamId?: string; // Scope to a team; omit for a workspace-shared view.
+  shared?: boolean; // Shared (team-visible in the Views nav) vs private.
 }
 
 export interface UpdateViewInput extends IssueFilterParams {
@@ -370,6 +373,7 @@ export interface UpdateViewInput extends IssueFilterParams {
   name?: string;
   description?: string;
   teamId?: string;
+  shared?: boolean;
 }
 
 export interface DeleteViewInput {
