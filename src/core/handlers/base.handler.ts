@@ -48,9 +48,14 @@ export abstract class BaseHandler {
 
   /**
    * Creates a JSON response with the given data.
+   *
+   * Serialised compactly (no pretty-print indentation): the response is
+   * consumed by an LLM, not read by a human, so the 2-space indentation was
+   * pure token overhead — ~25-30% of every payload was whitespace with zero
+   * information value. JSON is still fully parseable.
    */
   protected createJsonResponse(data: unknown): BaseToolResponse {
-    return this.createResponse(JSON.stringify(data, null, 2));
+    return this.createResponse(JSON.stringify(data));
   }
 
   /**

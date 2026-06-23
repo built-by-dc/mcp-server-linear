@@ -20,6 +20,9 @@ export interface ToolHandler {
   handleCreateIssueRelation(args: any): Promise<BaseToolResponse>;
   handleListViews(args: any): Promise<BaseToolResponse>;
   handleGetViewIssues(args: any): Promise<BaseToolResponse>;
+  handleCreateView(args: any): Promise<BaseToolResponse>;
+  handleUpdateView(args: any): Promise<BaseToolResponse>;
+  handleDeleteView(args: any): Promise<BaseToolResponse>;
   handleDeleteIssue(args: any): Promise<BaseToolResponse>;
   handleDeleteIssues(args: any): Promise<BaseToolResponse>;
   handleEditIssue(args: any): Promise<BaseToolResponse>;

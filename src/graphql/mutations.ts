@@ -14,6 +14,38 @@ export const CREATE_ISSUE_MUTATION = gql`
   }
 `;
 
+export const CREATE_VIEW_MUTATION = gql`
+  mutation CreateView($input: CustomViewCreateInput!) {
+    customViewCreate(input: $input) {
+      success
+      customView {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const UPDATE_VIEW_MUTATION = gql`
+  mutation UpdateView($id: String!, $input: CustomViewUpdateInput!) {
+    customViewUpdate(id: $id, input: $input) {
+      success
+      customView {
+        id
+        name
+      }
+    }
+  }
+`;
+
+export const DELETE_VIEW_MUTATION = gql`
+  mutation DeleteView($id: String!) {
+    customViewDelete(id: $id) {
+      success
+    }
+  }
+`;
+
 export const CREATE_ISSUES_MUTATION = gql`
   mutation CreateIssues($input: [IssueCreateInput!]!) {
     issueCreate(input: $input) {

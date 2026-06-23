@@ -30,6 +30,13 @@ import {
   GetViewIssuesInput,
   ListViewsResponse,
   GetViewIssuesResponse,
+  IssueFilterParams,
+  CreateViewInput,
+  UpdateViewInput,
+  DeleteViewInput,
+  CreateViewResponse,
+  UpdateViewResponse,
+  DeleteViewResponse,
   GetIssueCommentsInput,
   GetIssueResponse,
   GetIssueCommentsResponse,
@@ -163,9 +170,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
    * Build a Linear IssueFilter from the flat search parameters shared by
    * handleSearchIssues and handleSearchIssuesInComments.
    */
-  private buildIssueFilter(
-    args: SearchIssuesInput | SearchIssuesInCommentsInput
-  ): Record<string, unknown> {
+  private buildIssueFilter(args: IssueFilterParams): Record<string, unknown> {
     const filter: Record<string, unknown> = {};
 
     if (args.teamIds) filter.team = { id: { in: args.teamIds } };
@@ -180,7 +185,13 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
     // State by name and/or by type (backlog/unstarted/started/completed/
     // canceled). Both combine as AND within the same state filter.
     const state: Record<string, unknown> = {};
-    if (args.states) state.name = { in: args.states };
+    // name supports both include (in) and exclude (nin), merged.
+    if (args.states || args.notStates) {
+      const name: Record<string, unknown> = {};
+      if (args.states) name.in = args.states;
+      if (args.notStates) name.nin = args.notStates;
+      state.name = name;
+    }
     if (args.stateTypes) state.type = { in: args.stateTypes };
     if (Object.keys(state).length) filter.state = state;
 
@@ -194,7 +205,13 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       filter.labels = { some: { name: { in: args.labels } } };
     }
 
-    if (args.updatedSince) filter.updatedAt = { gte: args.updatedSince };
+    // updatedAt window: gte (updatedSince) and/or lte (updatedBefore), merged.
+    if (args.updatedSince || args.updatedBefore) {
+      const updatedAt: Record<string, unknown> = {};
+      if (args.updatedSince) updatedAt.gte = args.updatedSince;
+      if (args.updatedBefore) updatedAt.lte = args.updatedBefore;
+      filter.updatedAt = updatedAt;
+    }
     if (args.createdSince) filter.createdAt = { gte: args.createdSince };
 
     if (args.blocked) filter.hasBlockedByRelations = { eq: true };
@@ -310,6 +327,19 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
   }
 
   /**
+   * Cap a comment body for the inline recent-comments preview. Long threads
+   * dominated get_issue payloads; the preview only needs enough to convey what
+   * the comment was about. The full text is available via
+   * linear_get_issue_comments.
+   */
+  private truncateBody(body: string, max = 800): string {
+    if (!body || body.length <= max) return body;
+    return `${body.slice(0, max)}\n…[truncated ${
+      body.length - max
+    } chars — use linear_get_issue_comments for the full thread]`;
+  }
+
+  /**
    * Get a single issue by identifier: full body + structure + cross-links, plus
    * only the most recent N comments (default 5). Older comments are not
    * included — `comments.hasMore` signals they exist; page them with
@@ -321,9 +351,17 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       const client = this.verifyAuth();
       this.validateRequiredParams(args, ["identifier"]);
 
+      // Default to 2 recent comments (was 5). Comment bodies were ~44% of the
+      // average get_issue payload, yet most reads only need the
+      // recent-activity signal (is there fresh discussion / already-resolved
+      // work?), not the full thread. hasMore + linear_get_issue_comments still
+      // expose the rest on demand. Callers that want the thread inline can
+      // raise commentLimit.
+      const commentLimit = args.commentLimit ?? 2;
+
       const result = (await client.getIssue(
         args.identifier,
-        args.commentLimit ?? 5
+        commentLimit
       )) as GetIssueResponse;
 
       if (!result.issue) {
@@ -331,8 +369,13 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       }
 
       const issue = result.issue;
-      // Linear returns comments newest-first already.
-      const recentComments = issue.comments?.nodes ?? [];
+      // Linear returns comments newest-first already. Truncate long bodies:
+      // the recent-comment signal needs the gist, not every word — the full
+      // text is one linear_get_issue_comments call away.
+      const recentComments = (issue.comments?.nodes ?? []).map((c) => ({
+        ...c,
+        body: this.truncateBody(c.body),
+      }));
 
       // Cross-links from body + the comments we have.
       const linkSource =
@@ -578,6 +621,74 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       });
     } catch (error) {
       this.handleError(error, "get view issues");
+    }
+  }
+
+  /**
+   * Create a custom/saved view. The filter is built from the same flat
+   * vocabulary as issue search (buildIssueFilter) and passed as the view's
+   * filterData. Omit teamId for a workspace-shared view; provide it to scope
+   * the view to a team. An empty filter creates a view over all issues.
+   */
+  async handleCreateView(args: CreateViewInput): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["name"]);
+
+      const filter = this.buildIssueFilter(args);
+      const input: Record<string, unknown> = { name: args.name };
+      if (args.description !== undefined) input.description = args.description;
+      if (args.teamId !== undefined) input.teamId = args.teamId;
+      if (Object.keys(filter).length) input.filterData = filter;
+
+      const result = (await client.createView(input)) as CreateViewResponse;
+      return this.createJsonResponse(result.customViewCreate);
+    } catch (error) {
+      this.handleError(error, "create view");
+    }
+  }
+
+  /**
+   * Update a custom view. Only the fields provided are changed. Supplying any
+   * filter knob replaces the view's filterData wholesale (Linear has no
+   * partial-filter merge); omit all filter knobs to rename/re-describe without
+   * touching the filter.
+   */
+  async handleUpdateView(args: UpdateViewInput): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const input: Record<string, unknown> = {};
+      if (args.name !== undefined) input.name = args.name;
+      if (args.description !== undefined) input.description = args.description;
+      if (args.teamId !== undefined) input.teamId = args.teamId;
+
+      const filter = this.buildIssueFilter(args);
+      if (Object.keys(filter).length) input.filterData = filter;
+
+      const result = (await client.updateView(
+        args.id,
+        input
+      )) as UpdateViewResponse;
+      return this.createJsonResponse(result.customViewUpdate);
+    } catch (error) {
+      this.handleError(error, "update view");
+    }
+  }
+
+  /**
+   * Delete a custom view by UUID.
+   */
+  async handleDeleteView(args: DeleteViewInput): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const result = (await client.deleteView(args.id)) as DeleteViewResponse;
+      return this.createJsonResponse(result.customViewDelete);
+    } catch (error) {
+      this.handleError(error, "delete view");
     }
   }
 

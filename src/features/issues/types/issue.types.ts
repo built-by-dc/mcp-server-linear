@@ -95,7 +95,7 @@ export interface SearchIssuesByIdentifierInput {
 
 export interface GetIssueInput {
   identifier: string;
-  commentLimit?: number; // Most-recent comments to include (default 5)
+  commentLimit?: number; // Most-recent comments to include (default 2)
 }
 
 export interface GetIssueCommentsInput {
@@ -338,6 +338,66 @@ export interface GetViewIssuesResponse {
   } | null;
 }
 
+/**
+ * The flat filter vocabulary shared by issue search and custom-view
+ * create/update — fed to buildIssueFilter to produce a Linear IssueFilter.
+ * SearchIssuesInput declares these same fields independently and stays
+ * structurally compatible.
+ */
+export interface IssueFilterParams {
+  teamIds?: string[];
+  assigneeIds?: string[];
+  unassigned?: boolean;
+  states?: string[];
+  notStates?: string[]; // Exclude these workflow state names (state.name nin)
+  stateTypes?: string[];
+  priority?: number;
+  projectId?: string;
+  labelIds?: string[];
+  labels?: string[];
+  updatedSince?: string;
+  updatedBefore?: string; // updatedAt <= this (ISO-8601 or relative duration)
+  createdSince?: string;
+  blocked?: boolean;
+  blocking?: boolean;
+  parentId?: string;
+  noParent?: boolean;
+}
+
+export interface CreateViewInput extends IssueFilterParams {
+  name: string;
+  description?: string;
+  teamId?: string; // Scope to a team; omit for a workspace-shared view.
+}
+
+export interface UpdateViewInput extends IssueFilterParams {
+  id: string; // Custom view UUID
+  name?: string;
+  description?: string;
+  teamId?: string;
+}
+
+export interface DeleteViewInput {
+  id: string;
+}
+
+interface ViewMutationResult {
+  success: boolean;
+  customView: { id: string; name: string };
+}
+
+export interface CreateViewResponse {
+  customViewCreate: ViewMutationResult;
+}
+
+export interface UpdateViewResponse {
+  customViewUpdate: ViewMutationResult;
+}
+
+export interface DeleteViewResponse {
+  customViewDelete: { success: boolean };
+}
+
 export interface CreateIssueRelationResponse {
   issueRelationCreate: {
     success: boolean;
@@ -377,6 +437,9 @@ export interface IssueHandlerMethods {
   ): Promise<BaseToolResponse>;
   handleListViews(args: ListViewsInput): Promise<BaseToolResponse>;
   handleGetViewIssues(args: GetViewIssuesInput): Promise<BaseToolResponse>;
+  handleCreateView(args: CreateViewInput): Promise<BaseToolResponse>;
+  handleUpdateView(args: UpdateViewInput): Promise<BaseToolResponse>;
+  handleDeleteView(args: DeleteViewInput): Promise<BaseToolResponse>;
   handleGetIssueComments(
     args: GetIssueCommentsInput
   ): Promise<BaseToolResponse>;

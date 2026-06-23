@@ -17,6 +17,9 @@ import {
   IssueRelationType,
   ListViewsResponse,
   GetViewIssuesResponse,
+  CreateViewResponse,
+  UpdateViewResponse,
+  DeleteViewResponse,
   GetIssueResponse,
   GetIssueCommentsResponse,
 } from "../features/issues/types/issue.types.js";
@@ -72,6 +75,30 @@ export class LinearGraphQLClient {
   async createIssue(input: CreateIssueInput): Promise<CreateIssueResponse> {
     const { CREATE_ISSUE_MUTATION } = await import("./mutations.js");
     return this.execute<CreateIssueResponse>(CREATE_ISSUE_MUTATION, { input });
+  }
+
+  // Create a custom view. `input` is the Linear CustomViewCreateInput
+  // (name/description/teamId/filterData) assembled by the handler.
+  async createView(
+    input: Record<string, unknown>
+  ): Promise<CreateViewResponse> {
+    const { CREATE_VIEW_MUTATION } = await import("./mutations.js");
+    return this.execute<CreateViewResponse>(CREATE_VIEW_MUTATION, { input });
+  }
+
+  // Update a custom view by UUID. `input` is a partial CustomViewUpdateInput.
+  async updateView(
+    id: string,
+    input: Record<string, unknown>
+  ): Promise<UpdateViewResponse> {
+    const { UPDATE_VIEW_MUTATION } = await import("./mutations.js");
+    return this.execute<UpdateViewResponse>(UPDATE_VIEW_MUTATION, { id, input });
+  }
+
+  // Delete a custom view by UUID.
+  async deleteView(id: string): Promise<DeleteViewResponse> {
+    const { DELETE_VIEW_MUTATION } = await import("./mutations.js");
+    return this.execute<DeleteViewResponse>(DELETE_VIEW_MUTATION, { id });
   }
 
   // Create multiple issues

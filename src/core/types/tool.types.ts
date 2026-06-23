@@ -15,6 +15,111 @@ const getToolDescription = (description: string): string => {
     : description;
 };
 
+// Flat filter vocabulary shared by view create/update — mirrors the
+// linear_search_issues filter knobs (buildIssueFilter consumes both).
+const VIEW_FILTER_PROPERTIES = {
+  teamIds: {
+    type: "array",
+    items: { type: "string" },
+    description: "Filter by team UUIDs",
+    optional: true,
+  },
+  assigneeIds: {
+    type: "array",
+    items: { type: "string" },
+    description: "Filter by assignee UUIDs",
+    optional: true,
+  },
+  unassigned: {
+    type: "boolean",
+    description: "Only issues with no assignee. Overrides assigneeIds.",
+    optional: true,
+  },
+  states: {
+    type: "array",
+    items: { type: "string" },
+    description: "Include only these workflow state names",
+    optional: true,
+  },
+  notStates: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Exclude these workflow state names (e.g. ['Done','Cancelled','Duplicate','In Review']). Combines with states/stateTypes.",
+    optional: true,
+  },
+  stateTypes: {
+    type: "array",
+    items: {
+      type: "string",
+      enum: ["backlog", "unstarted", "started", "completed", "canceled"],
+    },
+    description:
+      "Filter by workflow state TYPE (team-independent). Combines with `states`.",
+    optional: true,
+  },
+  priority: {
+    type: "number",
+    description: "Filter by priority (0=None,1=Urgent,2=High,3=Normal,4=Low)",
+    optional: true,
+  },
+  projectId: {
+    type: "string",
+    description: "Filter to a single project (UUID)",
+    optional: true,
+  },
+  labels: {
+    type: "array",
+    items: { type: "string" },
+    description: "Filter to issues having ANY of these label names",
+    optional: true,
+  },
+  labelIds: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Filter to issues having ANY of these label UUIDs. Takes precedence over `labels`.",
+    optional: true,
+  },
+  updatedSince: {
+    type: "string",
+    description:
+      "Lower bound: only issues updated on/after this (ISO-8601 timestamp, e.g. 2026-05-23T00:00:00Z). Pairs with updatedBefore for a window.",
+    optional: true,
+  },
+  updatedBefore: {
+    type: "string",
+    description:
+      "Upper bound: only issues updated on/before this (ISO-8601 timestamp). Combine with updatedSince to express 'active in window X but not since Y' (stale work).",
+    optional: true,
+  },
+  createdSince: {
+    type: "string",
+    description: "Only issues created on/after this ISO-8601 timestamp",
+    optional: true,
+  },
+  blocked: {
+    type: "boolean",
+    description: "Only issues blocked by another issue",
+    optional: true,
+  },
+  blocking: {
+    type: "boolean",
+    description: "Only issues blocking another issue",
+    optional: true,
+  },
+  parentId: {
+    type: "string",
+    description: "Only subtasks of this parent issue (UUID)",
+    optional: true,
+  },
+  noParent: {
+    type: "boolean",
+    description: "Only top-level issues (no parent). Overrides parentId.",
+    optional: true,
+  },
+} as const;
+
 export const toolSchemas = {
   // Linear Authentication Tools
   // [getToolName('linear_auth')]: {
@@ -618,7 +723,7 @@ export const toolSchemas = {
   [getToolName("linear_get_issue")]: {
     name: getToolName("linear_get_issue"),
     description: getToolDescription(
-      "Get a single issue: full body, metadata, parent/child subtasks, cross-linked issue identifiers, and the most recent comments (default 5, newest-first). Older comments are summarised by a `hasMore` flag — page them with linear_get_issue_comments. Raise commentLimit to pull more in one call."
+      "Get a single issue: full body, metadata, parent/child subtasks, cross-linked issue identifiers, and the most recent comments (default 2, newest-first, long bodies truncated). Older/full comments are signalled by a `hasMore` flag — page them with linear_get_issue_comments. Raise commentLimit to pull more inline."
     ),
     inputSchema: {
       type: "object",
@@ -630,7 +735,7 @@ export const toolSchemas = {
         commentLimit: {
           type: "number",
           description:
-            "Number of most-recent comments to include (default 5). Set higher to pull more of the thread inline.",
+            "Number of most-recent comments to include (default 2). Set higher to pull more of the thread inline.",
           optional: true,
         },
       },
@@ -764,6 +869,78 @@ export const toolSchemas = {
           type: "number",
           description: "Max issues to return (default 50)",
           optional: true,
+        },
+      },
+      required: ["id"],
+    },
+  },
+
+  [getToolName("linear_create_view")]: {
+    name: getToolName("linear_create_view"),
+    description: getToolDescription(
+      "Create a custom/saved Linear view. The filter is described with the same flat knobs as linear_search_issues (team/assignee/state/labels/project/parent/dates). Omit teamId for a workspace-shared view; provide it to scope to a team. An empty filter creates a view over all issues."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "View name" },
+        description: {
+          type: "string",
+          description: "Optional view description",
+          optional: true,
+        },
+        teamId: {
+          type: "string",
+          description:
+            "Scope the view to this team (UUID). Omit for a workspace-shared view.",
+          optional: true,
+        },
+        ...VIEW_FILTER_PROPERTIES,
+      },
+      required: ["name"],
+    },
+  },
+
+  [getToolName("linear_update_view")]: {
+    name: getToolName("linear_update_view"),
+    description: getToolDescription(
+      "Update a custom view by UUID. Only provided fields change. Supplying ANY filter knob replaces the view's whole filter (no partial merge); omit all filter knobs to rename/re-describe without touching the filter."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Custom view UUID (from linear_list_views)",
+        },
+        name: { type: "string", description: "New name", optional: true },
+        description: {
+          type: "string",
+          description: "New description",
+          optional: true,
+        },
+        teamId: {
+          type: "string",
+          description: "Re-scope to this team (UUID)",
+          optional: true,
+        },
+        ...VIEW_FILTER_PROPERTIES,
+      },
+      required: ["id"],
+    },
+  },
+
+  [getToolName("linear_delete_view")]: {
+    name: getToolName("linear_delete_view"),
+    description: getToolDescription(
+      "Delete a custom view by UUID. Get the UUID from linear_list_views."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Custom view UUID (from linear_list_views)",
         },
       },
       required: ["id"],

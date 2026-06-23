@@ -136,7 +136,6 @@ export const GET_ISSUE_QUERY = gql`
         id
         name
         type
-        color
       }
       assignee {
         id
@@ -157,7 +156,6 @@ export const GET_ISSUE_QUERY = gql`
         nodes {
           id
           name
-          color
         }
       }
       parent {
