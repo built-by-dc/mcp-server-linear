@@ -346,6 +346,8 @@ export interface IssueFilterParams {
   priority?: number;
   projectId?: string;
   noProject?: boolean; // project = none (project.null)
+  milestone?: string; // project-milestone UUID (projectMilestone.id.eq)
+  noMilestone?: boolean; // no project milestone (projectMilestone.null)
   labelIds?: string[];
   labels?: string[];
   notLabels?: string[]; // issue has NONE of these label names (labels.every.name.nin)

@@ -74,6 +74,18 @@ const VIEW_FILTER_PROPERTIES = {
       "Only issues with no project assigned. Overrides projectId.",
     optional: true,
   },
+  milestone: {
+    type: "string",
+    description:
+      "Filter to a single project milestone (UUID — from linear_get_project_milestones).",
+    optional: true,
+  },
+  noMilestone: {
+    type: "boolean",
+    description:
+      "Only issues with no project milestone assigned (e.g. in a project but unmilestoned). Overrides milestone.",
+    optional: true,
+  },
   labels: {
     type: "array",
     items: { type: "string" },

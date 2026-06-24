@@ -209,6 +209,14 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       filter.project = { id: { eq: args.projectId } };
     }
 
+    // Project milestone: noMilestone (none) takes precedence over a milestone
+    // UUID. Surfaces "in a project but unassigned to a milestone" hygiene.
+    if (args.noMilestone) {
+      filter.projectMilestone = { null: true };
+    } else if (args.milestone) {
+      filter.projectMilestone = { id: { eq: args.milestone } };
+    }
+
     // Labels. noLabels (zero labels) is exclusive and wins. Otherwise an
     // include clause (labelIds UUIDs take precedence over names, ANY-match via
     // `some`) and an exclude clause (notLabels via `every.name.nin` — issue has
