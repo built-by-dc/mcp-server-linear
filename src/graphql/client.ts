@@ -22,6 +22,7 @@ import {
   DeleteViewResponse,
   ListCyclesResponse,
   SetIssueCycleResponse,
+  ListNotificationsResponse,
   GetIssueResponse,
   GetIssueCommentsResponse,
 } from "../features/issues/types/issue.types.js";
@@ -77,6 +78,19 @@ export class LinearGraphQLClient {
   async createIssue(input: CreateIssueInput): Promise<CreateIssueResponse> {
     const { CREATE_ISSUE_MUTATION } = await import("./mutations.js");
     return this.execute<CreateIssueResponse>(CREATE_ISSUE_MUTATION, { input });
+  }
+
+  // List the viewer's notifications (the Inbox), optionally filtered by type
+  // and createdAt.
+  async listNotifications(
+    filter: Record<string, unknown> | undefined,
+    first: number = 50
+  ): Promise<ListNotificationsResponse> {
+    const { LIST_NOTIFICATIONS_QUERY } = await import("./queries.js");
+    return this.execute<ListNotificationsResponse>(LIST_NOTIFICATIONS_QUERY, {
+      filter,
+      first,
+    });
   }
 
   // List cycles, optionally filtered (e.g. by team or isActive/isNext flags).

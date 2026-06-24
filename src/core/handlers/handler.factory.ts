@@ -207,6 +207,13 @@ export class HandlerFactory {
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
       },
+      [getToolName("linear_list_notifications")]: {
+        handler: this.issueHandler,
+        method: "handleListNotifications",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
       [getToolName("linear_delete_issue")]: {
         handler: this.issueHandler,
         method: "handleDeleteIssue",

@@ -25,6 +25,7 @@ export interface ToolHandler {
   handleDeleteView(args: any): Promise<BaseToolResponse>;
   handleListCycles(args: any): Promise<BaseToolResponse>;
   handleSetIssueCycle(args: any): Promise<BaseToolResponse>;
+  handleListNotifications(args: any): Promise<BaseToolResponse>;
   handleDeleteIssue(args: any): Promise<BaseToolResponse>;
   handleDeleteIssues(args: any): Promise<BaseToolResponse>;
   handleEditIssue(args: any): Promise<BaseToolResponse>;

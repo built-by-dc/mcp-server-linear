@@ -377,6 +377,7 @@ export interface IssueFilterParams {
   notCycle?: string; // negated membership (same vocabulary; ignored if `cycle` set)
   keyword?: string; // free-text: searchableContent contains (title+body+comments)
   notKeyword?: string; // searchableContent notContains
+  subscriber?: string[]; // user is a subscriber (subscribers.some.id.in) — proxy for "involved/@mentioned"
 }
 
 export interface CreateViewInput extends IssueFilterParams {
@@ -452,6 +453,38 @@ export interface SetIssueCycleInput {
   teamId?: string; // Disambiguate current/next/previous in a multi-team workspace
 }
 
+export interface ListNotificationsInput {
+  mentionsOnly?: boolean; // only issueMention + issueCommentMention
+  type?: string; // raw notification type filter (e.g. "issueAssignedToYou")
+  since?: string; // createdAt >= this (ISO-8601 or relative duration like -P1D)
+  unreadOnly?: boolean; // drop already-read (readAt set)
+  first?: number;
+}
+
+interface NotificationNode {
+  id: string;
+  type: string;
+  createdAt: string;
+  readAt?: string | null;
+  title?: string | null;
+  inboxUrl?: string | null;
+  actor?: { id: string; name: string } | null;
+  issue?: {
+    id: string;
+    identifier: string;
+    title: string;
+    url: string;
+    state?: { name: string } | null;
+  } | null;
+}
+
+export interface ListNotificationsResponse {
+  notifications: {
+    pageInfo: { hasNextPage: boolean; endCursor: string | null };
+    nodes: NotificationNode[];
+  };
+}
+
 export interface SetIssueCycleResponse {
   issueUpdate: {
     success: boolean;
@@ -513,6 +546,9 @@ export interface IssueHandlerMethods {
   handleDeleteView(args: DeleteViewInput): Promise<BaseToolResponse>;
   handleListCycles(args: ListCyclesInput): Promise<BaseToolResponse>;
   handleSetIssueCycle(args: SetIssueCycleInput): Promise<BaseToolResponse>;
+  handleListNotifications(
+    args: ListNotificationsInput
+  ): Promise<BaseToolResponse>;
   handleGetIssueComments(
     args: GetIssueCommentsInput
   ): Promise<BaseToolResponse>;

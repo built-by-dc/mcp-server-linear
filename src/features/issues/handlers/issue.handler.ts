@@ -41,6 +41,8 @@ import {
   ListCyclesResponse,
   SetIssueCycleInput,
   SetIssueCycleResponse,
+  ListNotificationsInput,
+  ListNotificationsResponse,
   GetIssueCommentsInput,
   GetIssueResponse,
   GetIssueCommentsResponse,
@@ -310,6 +312,13 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       if (args.keyword) sc.contains = args.keyword;
       if (args.notKeyword) sc.notContains = args.notKeyword;
       filter.searchableContent = sc;
+    }
+
+    // Subscribers: issues the given users follow. @-mentioning auto-subscribes,
+    // so this is the structured proxy for "involved / mentioned" (also catches
+    // assignee/creator/manual follows — there is no precise mention filter).
+    if (args.subscriber?.length) {
+      filter.subscribers = { some: { id: { in: args.subscriber } } };
     }
 
     return filter;
@@ -921,6 +930,45 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       return this.createJsonResponse(result.issueUpdate);
     } catch (error) {
       this.handleError(error, "set issue cycle");
+    }
+  }
+
+  /**
+   * List the viewer's notifications (the Inbox). The precise, dated answer to
+   * "where am I @-mentioned": mentionsOnly filters to issueMention +
+   * issueCommentMention; since bounds by createdAt (today vs historical);
+   * unreadOnly drops already-read. Each item links its issue + actor + inboxUrl.
+   */
+  async handleListNotifications(
+    args: ListNotificationsInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+
+      const filter: Record<string, unknown> = {};
+      if (args.mentionsOnly) {
+        filter.type = { in: ["issueMention", "issueCommentMention"] };
+      } else if (args.type) {
+        filter.type = { eq: args.type };
+      }
+      if (args.since) filter.createdAt = { gte: args.since };
+
+      const result = (await client.listNotifications(
+        Object.keys(filter).length ? filter : undefined,
+        args.first ?? 50
+      )) as ListNotificationsResponse;
+
+      // NotificationFilter has no readAt; filter unread client-side.
+      let nodes = result.notifications.nodes;
+      if (args.unreadOnly) nodes = nodes.filter((n) => !n.readAt);
+
+      return this.createJsonResponse({
+        count: nodes.length,
+        hasMore: result.notifications.pageInfo.hasNextPage,
+        notifications: nodes,
+      });
+    } catch (error) {
+      this.handleError(error, "list notifications");
     }
   }
 

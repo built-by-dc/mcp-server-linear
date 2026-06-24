@@ -132,6 +132,40 @@ export const GET_ISSUES_BY_IDENTIFIER = gql`
 // most recent N comments. Linear orders comments newest-first, so `first: N`
 // yields the latest N and hasNextPage signals older comments exist. Use
 // GET_ISSUE_COMMENTS_QUERY to page the rest.
+export const LIST_NOTIFICATIONS_QUERY = gql`
+  query ListNotifications($filter: NotificationFilter, $first: Int) {
+    notifications(filter: $filter, first: $first) {
+      pageInfo {
+        hasNextPage
+        endCursor
+      }
+      nodes {
+        id
+        type
+        createdAt
+        readAt
+        title
+        inboxUrl
+        actor {
+          id
+          name
+        }
+        ... on IssueNotification {
+          issue {
+            id
+            identifier
+            title
+            url
+            state {
+              name
+            }
+          }
+        }
+      }
+    }
+  }
+`;
+
 export const LIST_CYCLES_QUERY = gql`
   query ListCycles($filter: CycleFilter, $first: Int) {
     cycles(filter: $filter, first: $first) {

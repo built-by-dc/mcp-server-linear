@@ -199,6 +199,13 @@ const VIEW_FILTER_PROPERTIES = {
       "Free-text exclude: issues whose searchable content does NOT contain this string. Combines with keyword.",
     optional: true,
   },
+  subscriber: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Issues where ANY of these user UUIDs is a subscriber. @-mentioning auto-subscribes, so this is the proxy for 'involved/mentioned' (also includes assignee/creator/manual follows). For a precise, dated 'mentioned' feed use linear_list_notifications instead.",
+    optional: true,
+  },
 } as const;
 
 export const toolSchemas = {
@@ -1023,6 +1030,46 @@ export const toolSchemas = {
         first: {
           type: "number",
           description: "Max cycles to return (default 50)",
+          optional: true,
+        },
+      },
+    },
+  },
+
+  [getToolName("linear_list_notifications")]: {
+    name: getToolName("linear_list_notifications"),
+    description: getToolDescription(
+      "List the viewer's notifications (the Inbox) — the precise, dated answer to 'where am I @-mentioned'. Unlike the `subscriber` filter (static membership), notifications carry createdAt + type, so you get today-vs-historical and unread. Each item links its issue + actor + inboxUrl."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        mentionsOnly: {
+          type: "boolean",
+          description:
+            "Only @-mention notifications (issueMention + issueCommentMention).",
+          optional: true,
+        },
+        type: {
+          type: "string",
+          description:
+            "Raw notification type filter (e.g. 'issueAssignedToYou', 'issueNewComment'). Ignored if mentionsOnly is set.",
+          optional: true,
+        },
+        since: {
+          type: "string",
+          description:
+            "Only notifications created on/after this (ISO-8601 timestamp or relative duration like '-P1D' for the last day / 'today').",
+          optional: true,
+        },
+        unreadOnly: {
+          type: "boolean",
+          description: "Drop notifications already read (readAt set).",
+          optional: true,
+        },
+        first: {
+          type: "number",
+          description: "Max notifications to return (default 50)",
           optional: true,
         },
       },
