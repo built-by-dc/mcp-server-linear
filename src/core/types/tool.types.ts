@@ -187,6 +187,18 @@ const VIEW_FILTER_PROPERTIES = {
       "Negated cycle membership (same vocabulary as `cycle`). E.g. notCycle:'current' for work NOT in the active cycle (off-plan). Ignored if `cycle` is set.",
     optional: true,
   },
+  keyword: {
+    type: "string",
+    description:
+      "Free-text match: issues whose searchable content (title + description + comments + identifier) CONTAINS this string. Builds a saved keyword View.",
+    optional: true,
+  },
+  notKeyword: {
+    type: "string",
+    description:
+      "Free-text exclude: issues whose searchable content does NOT contain this string. Combines with keyword.",
+    optional: true,
+  },
 } as const;
 
 export const toolSchemas = {

@@ -365,6 +365,8 @@ export interface IssueFilterParams {
   notParentStates?: string[]; // parent's state name nin [...] (parent.state.name.nin)
   cycle?: string; // membership: "current" | "next" | "previous" | "none" | <cycle UUID>
   notCycle?: string; // negated membership (same vocabulary; ignored if `cycle` set)
+  keyword?: string; // free-text: searchableContent contains (title+body+comments)
+  notKeyword?: string; // searchableContent notContains
 }
 
 export interface CreateViewInput extends IssueFilterParams {

@@ -304,6 +304,15 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       filter.cycle = cycleClause(args.notCycle, true);
     }
 
+    // Free-text: searchableContent spans title + description + comments +
+    // identifier (Linear's full-text index). contains/notContains combine.
+    if (args.keyword || args.notKeyword) {
+      const sc: Record<string, unknown> = {};
+      if (args.keyword) sc.contains = args.keyword;
+      if (args.notKeyword) sc.notContains = args.notKeyword;
+      filter.searchableContent = sc;
+    }
+
     return filter;
   }
 
