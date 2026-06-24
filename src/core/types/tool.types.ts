@@ -415,20 +415,74 @@ export const toolSchemas = {
         },
         update: {
           type: "object",
+          description:
+            "Fields to set on every listed issue. Applied per-issue; the result reports succeeded/failed counts.",
           properties: {
             stateId: {
               type: "string",
-              description: "New state ID",
+              description: "New workflow state UUID",
               optional: true,
             },
             assigneeId: {
               type: "string",
-              description: "New assignee ID",
+              description: "New assignee UUID",
               optional: true,
             },
             priority: {
               type: "number",
-              description: "New priority (0-4)",
+              description: "New priority (0=None,1=Urgent,2=High,3=Normal,4=Low)",
+              optional: true,
+            },
+            addedLabelIds: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Label UUIDs to ADD without disturbing existing labels (non-destructive — use this for bulk-tagging e.g. ready-for-*).",
+              optional: true,
+            },
+            removedLabelIds: {
+              type: "array",
+              items: { type: "string" },
+              description: "Label UUIDs to REMOVE.",
+              optional: true,
+            },
+            labelIds: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "REPLACE the entire label set with these UUIDs (destructive — prefer addedLabelIds/removedLabelIds for bulk).",
+              optional: true,
+            },
+            cycleId: {
+              type: "string",
+              description:
+                "Assign to this cycle UUID (or null to clear). Use linear_list_cycles to resolve current.",
+              optional: true,
+            },
+            projectId: {
+              type: "string",
+              description: "Move to this project UUID",
+              optional: true,
+            },
+            projectMilestoneId: {
+              type: "string",
+              description:
+                "Set the project milestone UUID (the issue must be in that project).",
+              optional: true,
+            },
+            parentId: {
+              type: "string",
+              description: "Set the parent issue UUID (or null to detach)",
+              optional: true,
+            },
+            dueDate: {
+              type: "string",
+              description: "Due date YYYY-MM-DD (or null to clear)",
+              optional: true,
+            },
+            estimate: {
+              type: "number",
+              description: "Point estimate",
               optional: true,
             },
           },

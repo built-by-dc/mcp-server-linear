@@ -150,19 +150,18 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
         throw new Error("IssueIds parameter must be an array");
       }
 
-      const result = (await client.updateIssues(
-        args.issueIds,
-        args.update
-      )) as UpdateIssueResponse;
+      const results = await client.updateIssues(args.issueIds, args.update);
+      const succeeded = results.filter((r) => r.success).map((r) => r.id);
+      const failed = results.filter((r) => !r.success);
 
-      if (!result.issueUpdate.success) {
-        throw new Error("Failed to update issues");
-      }
-
-      // Since the response only contains a single issue, we count the number of IDs that were updated
-      const updatedCount = args.issueIds.length;
-
-      return this.createResponse(`Successfully updated ${updatedCount} issues`);
+      return this.createJsonResponse({
+        requested: args.issueIds.length,
+        succeeded: succeeded.length,
+        failed: failed.length,
+        ...(failed.length
+          ? { failures: failed.map((f) => ({ id: f.id, error: f.error })) }
+          : {}),
+      });
     } catch (error) {
       this.handleError(error, "update issues");
     }

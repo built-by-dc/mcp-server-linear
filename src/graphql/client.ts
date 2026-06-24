@@ -187,13 +187,23 @@ export class LinearGraphQLClient {
   async updateIssues(
     ids: string[],
     input: UpdateIssueInput
-  ): Promise<UpdateIssueResponse> {
-    // Handle bulk updates one at a time since the API only supports single updates
-    const updates = await Promise.all(
-      ids.map((id) => this.updateIssue(id, input))
+  ): Promise<Array<{ id: string; success: boolean; error?: string }>> {
+    // Linear has no multi-id issueUpdate; fan out one mutation per id and
+    // report each outcome so the caller can surface real success/failure
+    // counts rather than assuming all succeeded.
+    return Promise.all(
+      ids.map(async (id) => {
+        try {
+          const r = (await this.updateIssue(
+            id,
+            input
+          )) as UpdateIssueResponse;
+          return { id, success: !!r.issueUpdate?.success };
+        } catch (e) {
+          return { id, success: false, error: (e as Error).message };
+        }
+      })
     );
-
-    return updates[0]; // Return the first response as they should all be similar
   }
 
   // Create multiple labels

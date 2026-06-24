@@ -28,6 +28,16 @@ export interface UpdateIssueInput {
   priority?: number;
   projectId?: string;
   stateId?: string;
+  // Extended fields (esp. for bulk hygiene/loop ops). All pass straight to
+  // Linear's IssueUpdateInput.
+  labelIds?: string[]; // REPLACE the full label set
+  addedLabelIds?: string[]; // add without disturbing existing (non-destructive)
+  removedLabelIds?: string[]; // remove specific labels
+  cycleId?: string | null; // assign/clear cycle (null = remove)
+  projectMilestoneId?: string | null; // requires projectId set on the issue
+  parentId?: string | null;
+  dueDate?: string | null; // YYYY-MM-DD
+  estimate?: number;
 }
 
 export interface BulkUpdateIssuesInput {
