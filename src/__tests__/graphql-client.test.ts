@@ -4,7 +4,7 @@ import { LinearClient } from '@linear/sdk';
 import { 
   CreateIssueInput, 
   CreateIssueResponse,
-  CreateIssuesResponse,
+  IssueBatchResponse,
   UpdateIssueInput,
   UpdateIssueResponse,
   SearchIssuesInput,
@@ -140,11 +140,11 @@ describe('LinearGraphQLClient', () => {
       
       const result: CreateIssueResponse = await graphqlClient.createIssue(input);
 
-      // Verify single mutation call with array input
+      // Verify single mutation call with the issue input
       expect(mockRawRequest).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          input: [input]
+          input
         })
       );
 
@@ -352,11 +352,12 @@ describe('LinearGraphQLClient', () => {
   });
 
   describe('Bulk Operations', () => {
-    it('should create multiple issues with a single mutation', async () => {
+    it('should create multiple issues with a single batch mutation', async () => {
       const mockResponse = {
         data: {
-          issueCreate: {
+          issueBatchCreate: {
             success: true,
+            lastSyncId: 1,
             issues: [
               {
                 id: 'issue-1',
@@ -390,7 +391,7 @@ describe('LinearGraphQLClient', () => {
         }
       ];
 
-      const result: CreateIssuesResponse = await graphqlClient.createIssues(issues);
+      const result: IssueBatchResponse = await graphqlClient.createIssues(issues);
 
       expect(result).toEqual(mockResponse.data);
       // Verify single mutation call
@@ -398,62 +399,65 @@ describe('LinearGraphQLClient', () => {
       expect(mockRawRequest).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          input: issues
+          input: { issues }
         })
       );
     });
 
-    it('should update multiple issues with a single mutation', async () => {
-      const mockResponse = {
+    it('should update multiple issues by fanning out one mutation per id', async () => {
+      const mockResponseFor = (id: string, title: string) => ({
         data: {
           issueUpdate: {
             success: true,
-            issues: [
-              {
-                id: 'issue-1',
-                identifier: 'TEST-1',
-                title: 'Updated Issue 1',
-                url: 'https://linear.app/test/issue/TEST-1'
-              },
-              {
-                id: 'issue-2',
-                identifier: 'TEST-2',
-                title: 'Updated Issue 2',
-                url: 'https://linear.app/test/issue/TEST-2'
-              }
-            ]
+            issue: {
+              id,
+              identifier: id.toUpperCase(),
+              title,
+              url: `https://linear.app/test/issue/${id}`
+            }
           }
         }
-      };
+      });
 
-      mockRawRequest.mockResolvedValueOnce(mockResponse);
+      mockRawRequest
+        .mockResolvedValueOnce(mockResponseFor('issue-1', 'Updated Issue 1'))
+        .mockResolvedValueOnce(mockResponseFor('issue-2', 'Updated Issue 2'));
 
       const ids = ['issue-1', 'issue-2'];
       const updateInput: UpdateIssueInput = { stateId: 'state-2' };
-      const result: UpdateIssueResponse = await graphqlClient.updateIssues(ids, updateInput);
+      const result = await graphqlClient.updateIssues(ids, updateInput);
 
-      expect(result).toEqual(mockResponse.data);
-      // Verify single mutation call
-      expect(mockRawRequest).toHaveBeenCalledTimes(1);
+      expect(result).toEqual([
+        { id: 'issue-1', success: true },
+        { id: 'issue-2', success: true }
+      ]);
+      // One mutation per id
+      expect(mockRawRequest).toHaveBeenCalledTimes(2);
       expect(mockRawRequest).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          ids,
+          id: 'issue-1',
           input: updateInput
         })
       );
     });
 
-    it('should handle update errors', async () => {
+    it('should report per-id failure instead of rejecting on update errors', async () => {
       mockRawRequest.mockRejectedValueOnce(new Error('Update failed'));
 
       const updateInput: UpdateIssueInput = { stateId: 'state-2' };
-      await expect(
-        graphqlClient.updateIssues(['issue-1'], updateInput)
-      ).rejects.toThrow('GraphQL operation failed: Update failed');
+      const result = await graphqlClient.updateIssues(['issue-1'], updateInput);
+
+      expect(result).toEqual([
+        {
+          id: 'issue-1',
+          success: false,
+          error: 'GraphQL operation failed: Update failed'
+        }
+      ]);
     });
 
-    it('should delete multiple issues with a single mutation', async () => {
+    it('should delete a single issue', async () => {
       const mockResponse = {
         data: {
           issueDelete: {
@@ -464,16 +468,14 @@ describe('LinearGraphQLClient', () => {
 
       mockRawRequest.mockResolvedValueOnce(mockResponse);
 
-      const ids = ['issue-1', 'issue-2'];
-      const result: DeleteIssueResponse = await graphqlClient.deleteIssues(ids);
+      const result: DeleteIssueResponse = await graphqlClient.deleteIssue('issue-1');
 
       expect(result).toEqual(mockResponse.data);
-      // Verify single mutation call
       expect(mockRawRequest).toHaveBeenCalledTimes(1);
       expect(mockRawRequest).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({
-          ids
+          id: 'issue-1'
         })
       );
     });
