@@ -11,6 +11,20 @@ import {
   DeleteIssueResponse,
   Issue,
   IssueBatchResponse,
+  GetIssueRelationsResponse,
+  GetIssueHistoryResponse,
+  CreateIssueRelationResponse,
+  IssueRelationType,
+  ListViewsResponse,
+  GetViewIssuesResponse,
+  CreateViewResponse,
+  UpdateViewResponse,
+  DeleteViewResponse,
+  ListCyclesResponse,
+  SetIssueCycleResponse,
+  ListNotificationsResponse,
+  GetIssueResponse,
+  GetIssueCommentsResponse,
 } from "../features/issues/types/issue.types.js";
 import {
   ProjectInput,
@@ -26,6 +40,13 @@ import {
   LabelResponse,
 } from "../features/teams/types/team.types.js";
 import { UserResponse } from "../features/users/types/user.types.js";
+import {
+  GetDocumentResponse,
+  ListDocumentsResponse,
+  DocumentFilter,
+  SaveDocumentArgs,
+  DocumentMutationResponse,
+} from "../features/documents/types/document.types.js";
 
 export class LinearGraphQLClient {
   private linearClient: LinearClient;
@@ -57,6 +78,67 @@ export class LinearGraphQLClient {
   async createIssue(input: CreateIssueInput): Promise<CreateIssueResponse> {
     const { CREATE_ISSUE_MUTATION } = await import("./mutations.js");
     return this.execute<CreateIssueResponse>(CREATE_ISSUE_MUTATION, { input });
+  }
+
+  // List the viewer's notifications (the Inbox), optionally filtered by type
+  // and createdAt.
+  async listNotifications(
+    filter: Record<string, unknown> | undefined,
+    first: number = 50
+  ): Promise<ListNotificationsResponse> {
+    const { LIST_NOTIFICATIONS_QUERY } = await import("./queries.js");
+    return this.execute<ListNotificationsResponse>(LIST_NOTIFICATIONS_QUERY, {
+      filter,
+      first,
+    });
+  }
+
+  // List cycles, optionally filtered (e.g. by team or isActive/isNext flags).
+  async listCycles(
+    filter: Record<string, unknown> | undefined,
+    first: number = 50
+  ): Promise<ListCyclesResponse> {
+    const { LIST_CYCLES_QUERY } = await import("./queries.js");
+    return this.execute<ListCyclesResponse>(LIST_CYCLES_QUERY, {
+      filter,
+      first,
+    });
+  }
+
+  // Set (or clear, with cycleId=null) an issue's cycle.
+  async setIssueCycle(
+    id: string,
+    cycleId: string | null
+  ): Promise<SetIssueCycleResponse> {
+    const { SET_ISSUE_CYCLE_MUTATION } = await import("./mutations.js");
+    return this.execute<SetIssueCycleResponse>(SET_ISSUE_CYCLE_MUTATION, {
+      id,
+      input: { cycleId },
+    });
+  }
+
+  // Create a custom view. `input` is the Linear CustomViewCreateInput
+  // (name/description/teamId/filterData) assembled by the handler.
+  async createView(
+    input: Record<string, unknown>
+  ): Promise<CreateViewResponse> {
+    const { CREATE_VIEW_MUTATION } = await import("./mutations.js");
+    return this.execute<CreateViewResponse>(CREATE_VIEW_MUTATION, { input });
+  }
+
+  // Update a custom view by UUID. `input` is a partial CustomViewUpdateInput.
+  async updateView(
+    id: string,
+    input: Record<string, unknown>
+  ): Promise<UpdateViewResponse> {
+    const { UPDATE_VIEW_MUTATION } = await import("./mutations.js");
+    return this.execute<UpdateViewResponse>(UPDATE_VIEW_MUTATION, { id, input });
+  }
+
+  // Delete a custom view by UUID.
+  async deleteView(id: string): Promise<DeleteViewResponse> {
+    const { DELETE_VIEW_MUTATION } = await import("./mutations.js");
+    return this.execute<DeleteViewResponse>(DELETE_VIEW_MUTATION, { id });
   }
 
   // Create multiple issues
@@ -119,13 +201,23 @@ export class LinearGraphQLClient {
   async updateIssues(
     ids: string[],
     input: UpdateIssueInput
-  ): Promise<UpdateIssueResponse> {
-    // Handle bulk updates one at a time since the API only supports single updates
-    const updates = await Promise.all(
-      ids.map((id) => this.updateIssue(id, input))
+  ): Promise<Array<{ id: string; success: boolean; error?: string }>> {
+    // Linear has no multi-id issueUpdate; fan out one mutation per id and
+    // report each outcome so the caller can surface real success/failure
+    // counts rather than assuming all succeeded.
+    return Promise.all(
+      ids.map(async (id) => {
+        try {
+          const r = (await this.updateIssue(
+            id,
+            input
+          )) as UpdateIssueResponse;
+          return { id, success: !!r.issueUpdate?.success };
+        } catch (e) {
+          return { id, success: false, error: (e as Error).message };
+        }
+      })
     );
-
-    return updates[0]; // Return the first response as they should all be similar
   }
 
   // Create multiple labels
@@ -197,6 +289,86 @@ export class LinearGraphQLClient {
     return { issues: raw.searchIssues };
   }
 
+  // Get a single issue with full body + the most recent N comments.
+  async getIssue(
+    id: string,
+    commentLimit: number = 5
+  ): Promise<GetIssueResponse> {
+    const { GET_ISSUE_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueResponse>(GET_ISSUE_QUERY, {
+      id,
+      commentLimit: Math.max(1, commentLimit),
+    });
+  }
+
+  // Get a single issue's full comment thread, paginated (oldest-first).
+  async getIssueComments(
+    id: string,
+    first: number = 50,
+    after?: string
+  ): Promise<GetIssueCommentsResponse> {
+    const { GET_ISSUE_COMMENTS_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueCommentsResponse>(GET_ISSUE_COMMENTS_QUERY, {
+      id,
+      first,
+      after,
+    });
+  }
+
+  // Get formal Linear relations (blocks/related/duplicate) for an issue.
+  // `id` may be a UUID or a human identifier (e.g. "ENG-123") — Linear's
+  // issue(id:) resolves both.
+  async getIssueRelations(id: string): Promise<GetIssueRelationsResponse> {
+    const { GET_ISSUE_RELATIONS_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueRelationsResponse>(GET_ISSUE_RELATIONS_QUERY, {
+      id,
+    });
+  }
+
+  // Get an issue's activity history (state/assignee/priority/title/relation
+  // changes). Comment additions are NOT part of Linear's issue history.
+  async getIssueHistory(
+    id: string,
+    first: number = 50
+  ): Promise<GetIssueHistoryResponse> {
+    const { GET_ISSUE_HISTORY_QUERY } = await import("./queries.js");
+    return this.execute<GetIssueHistoryResponse>(GET_ISSUE_HISTORY_QUERY, {
+      id,
+      first,
+    });
+  }
+
+  // Create a formal relation between two issues. Both IDs must be UUIDs.
+  async createIssueRelation(
+    issueId: string,
+    relatedIssueId: string,
+    type: IssueRelationType
+  ): Promise<CreateIssueRelationResponse> {
+    const { CREATE_ISSUE_RELATION_MUTATION } = await import("./mutations.js");
+    return this.execute<CreateIssueRelationResponse>(
+      CREATE_ISSUE_RELATION_MUTATION,
+      { input: { issueId, relatedIssueId, type } }
+    );
+  }
+
+  // List custom/saved views
+  async listViews(first: number = 50): Promise<ListViewsResponse> {
+    const { LIST_VIEWS_QUERY } = await import("./queries.js");
+    return this.execute<ListViewsResponse>(LIST_VIEWS_QUERY, { first });
+  }
+
+  // Get the issues a custom view resolves to (applies the view's own filter).
+  async getViewIssues(
+    id: string,
+    first: number = 50
+  ): Promise<GetViewIssuesResponse> {
+    const { GET_VIEW_ISSUES_QUERY } = await import("./queries.js");
+    return this.execute<GetViewIssuesResponse>(GET_VIEW_ISSUES_QUERY, {
+      id,
+      first,
+    });
+  }
+
   // Get teams with their states and labels
   async getTeams(): Promise<TeamResponse> {
     const { GET_TEAMS_QUERY } = await import("./queries.js");
@@ -222,6 +394,66 @@ export class LinearGraphQLClient {
     const { SEARCH_PROJECTS_QUERY } = await import("./queries.js");
     return this.execute<SearchProjectsResponse>(SEARCH_PROJECTS_QUERY, {
       filter,
+    });
+  }
+
+  // Get a single document by id
+  async getDocument(id: string): Promise<GetDocumentResponse> {
+    const { GET_DOCUMENT_QUERY } = await import("./queries.js");
+    return this.execute<GetDocumentResponse>(GET_DOCUMENT_QUERY, { id });
+  }
+
+  // List documents with optional filter, ordering, and cursor pagination
+  async listDocuments(
+    first: number,
+    after?: string,
+    filter?: DocumentFilter,
+    orderBy: "createdAt" | "updatedAt" = "updatedAt",
+    includeArchived: boolean = false
+  ): Promise<ListDocumentsResponse> {
+    const { LIST_DOCUMENTS_QUERY } = await import("./queries.js");
+    return this.execute<ListDocumentsResponse>(LIST_DOCUMENTS_QUERY, {
+      first,
+      after,
+      filter,
+      orderBy,
+      includeArchived,
+    });
+  }
+
+  // Free-text document search
+  async searchDocuments(
+    term: string,
+    first: number,
+    after?: string,
+    includeArchived: boolean = false
+  ): Promise<ListDocumentsResponse> {
+    const { SEARCH_DOCUMENTS_QUERY } = await import("./queries.js");
+    const raw = await this.execute<{
+      searchDocuments: ListDocumentsResponse["documents"];
+    }>(SEARCH_DOCUMENTS_QUERY, { term, first, after, includeArchived });
+    return { documents: raw.searchDocuments };
+  }
+
+  // Create a document
+  async createDocument(
+    input: Record<string, unknown>
+  ): Promise<DocumentMutationResponse> {
+    const { CREATE_DOCUMENT_MUTATION } = await import("./mutations.js");
+    return this.execute<DocumentMutationResponse>(CREATE_DOCUMENT_MUTATION, {
+      input,
+    });
+  }
+
+  // Update a document
+  async updateDocument(
+    id: string,
+    input: Record<string, unknown>
+  ): Promise<DocumentMutationResponse> {
+    const { UPDATE_DOCUMENT_MUTATION } = await import("./mutations.js");
+    return this.execute<DocumentMutationResponse>(UPDATE_DOCUMENT_MUTATION, {
+      id,
+      input,
     });
   }
 

@@ -14,6 +14,18 @@ export interface ToolHandler {
   handleSearchIssues(args: any): Promise<BaseToolResponse>;
   handleSearchIssuesByIdentifier(args: any): Promise<BaseToolResponse>;
   handleGetIssue(args: any): Promise<BaseToolResponse>;
+  handleGetIssueComments(args: any): Promise<BaseToolResponse>;
+  handleGetIssueRelations(args: any): Promise<BaseToolResponse>;
+  handleGetIssueHistory(args: any): Promise<BaseToolResponse>;
+  handleCreateIssueRelation(args: any): Promise<BaseToolResponse>;
+  handleListViews(args: any): Promise<BaseToolResponse>;
+  handleGetViewIssues(args: any): Promise<BaseToolResponse>;
+  handleCreateView(args: any): Promise<BaseToolResponse>;
+  handleUpdateView(args: any): Promise<BaseToolResponse>;
+  handleDeleteView(args: any): Promise<BaseToolResponse>;
+  handleListCycles(args: any): Promise<BaseToolResponse>;
+  handleSetIssueCycle(args: any): Promise<BaseToolResponse>;
+  handleListNotifications(args: any): Promise<BaseToolResponse>;
   handleDeleteIssue(args: any): Promise<BaseToolResponse>;
   handleDeleteIssues(args: any): Promise<BaseToolResponse>;
   handleEditIssue(args: any): Promise<BaseToolResponse>;

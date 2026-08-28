@@ -15,6 +15,199 @@ const getToolDescription = (description: string): string => {
     : description;
 };
 
+// Flat filter vocabulary shared by view create/update — mirrors the
+// linear_search_issues filter knobs (buildIssueFilter consumes both).
+const VIEW_FILTER_PROPERTIES = {
+  teamIds: {
+    type: "array",
+    items: { type: "string" },
+    description: "Filter by team UUIDs",
+    optional: true,
+  },
+  assigneeIds: {
+    type: "array",
+    items: { type: "string" },
+    description: "Filter by assignee UUIDs",
+    optional: true,
+  },
+  unassigned: {
+    type: "boolean",
+    description: "Only issues with no assignee. Overrides assigneeIds.",
+    optional: true,
+  },
+  states: {
+    type: "array",
+    items: { type: "string" },
+    description: "Include only these workflow state names",
+    optional: true,
+  },
+  notStates: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Exclude these workflow state names (e.g. ['Done','Cancelled','Duplicate','In Review']). Combines with states/stateTypes.",
+    optional: true,
+  },
+  stateTypes: {
+    type: "array",
+    items: {
+      type: "string",
+      enum: ["backlog", "unstarted", "started", "completed", "canceled"],
+    },
+    description:
+      "Filter by workflow state TYPE (team-independent). Combines with `states`.",
+    optional: true,
+  },
+  priority: {
+    type: "number",
+    description: "Filter by priority (0=None,1=Urgent,2=High,3=Normal,4=Low)",
+    optional: true,
+  },
+  projectId: {
+    type: "string",
+    description: "Filter to a single project (UUID)",
+    optional: true,
+  },
+  noProject: {
+    type: "boolean",
+    description:
+      "Only issues with no project assigned. Overrides projectId.",
+    optional: true,
+  },
+  milestone: {
+    type: "string",
+    description:
+      "Filter to a single project milestone (UUID — from linear_get_project_milestones).",
+    optional: true,
+  },
+  noMilestone: {
+    type: "boolean",
+    description:
+      "Only issues with no project milestone assigned (e.g. in a project but unmilestoned). Overrides milestone.",
+    optional: true,
+  },
+  labels: {
+    type: "array",
+    items: { type: "string" },
+    description: "Filter to issues having ANY of these label names",
+    optional: true,
+  },
+  labelIds: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Filter to issues having ANY of these label UUIDs. Takes precedence over `labels`.",
+    optional: true,
+  },
+  notLabels: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Exclude issues carrying ANY of these label names (issue must have NONE of them; unlabelled issues pass). Combines with label includes.",
+    optional: true,
+  },
+  noLabels: {
+    type: "boolean",
+    description:
+      "Only issues with zero labels. Exclusive — overrides all other label filters.",
+    optional: true,
+  },
+  updatedSince: {
+    type: "string",
+    description:
+      "Lower bound: only issues updated on/after this (ISO-8601 timestamp, e.g. 2026-05-23T00:00:00Z). Pairs with updatedBefore for a window.",
+    optional: true,
+  },
+  updatedBefore: {
+    type: "string",
+    description:
+      "Upper bound: only issues updated on/before this (ISO-8601 timestamp, OR a relative duration like '-P7D'). Combine with updatedSince to express 'active in window X but not since Y' (stale work).",
+    optional: true,
+  },
+  updatedWithinDays: {
+    type: "number",
+    description:
+      "Sugar for a rolling lower bound: issues updated within the last N days (emits updatedAt >= -PND). Saved views roll forward automatically. Overridden by updatedSince.",
+    optional: true,
+  },
+  updatedMoreThanDaysAgo: {
+    type: "number",
+    description:
+      "Sugar for a rolling upper bound: issues NOT touched in the last N days (emits updatedAt <= -PND) — i.e. 'stale > N days'. Saved views roll forward automatically. Overridden by updatedBefore.",
+    optional: true,
+  },
+  createdSince: {
+    type: "string",
+    description: "Only issues created on/after this ISO-8601 timestamp",
+    optional: true,
+  },
+  blocked: {
+    type: "boolean",
+    description: "Only issues blocked by another issue",
+    optional: true,
+  },
+  blocking: {
+    type: "boolean",
+    description: "Only issues blocking another issue",
+    optional: true,
+  },
+  parentId: {
+    type: "string",
+    description: "Only subtasks of this parent issue (UUID)",
+    optional: true,
+  },
+  noParent: {
+    type: "boolean",
+    description: "Only top-level issues (no parent). Overrides parentId.",
+    optional: true,
+  },
+  parentStates: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Only subtasks whose PARENT is in one of these workflow-state names (e.g. ['Done','Canceled'] surfaces children orphaned by a closed parent).",
+    optional: true,
+  },
+  notParentStates: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Only subtasks whose parent is NOT in any of these state names.",
+    optional: true,
+  },
+  cycle: {
+    type: "string",
+    description:
+      "Cycle membership: 'current' | 'next' | 'previous' | 'none' (no cycle) | a cycle UUID. E.g. cycle:'current' for committed work; cycle:'none' for uncommitted.",
+    optional: true,
+  },
+  notCycle: {
+    type: "string",
+    description:
+      "Negated cycle membership (same vocabulary as `cycle`). E.g. notCycle:'current' for work NOT in the active cycle (off-plan). Ignored if `cycle` is set.",
+    optional: true,
+  },
+  keyword: {
+    type: "string",
+    description:
+      "Free-text match: issues whose searchable content (title + description + comments + identifier) CONTAINS this string. Builds a saved keyword View.",
+    optional: true,
+  },
+  notKeyword: {
+    type: "string",
+    description:
+      "Free-text exclude: issues whose searchable content does NOT contain this string. Combines with keyword.",
+    optional: true,
+  },
+  subscriber: {
+    type: "array",
+    items: { type: "string" },
+    description:
+      "Issues where ANY of these user UUIDs is a subscriber. @-mentioning auto-subscribes, so this is the proxy for 'involved/mentioned' (also includes assignee/creator/manual follows). For a precise, dated 'mentioned' feed use linear_list_notifications instead.",
+    optional: true,
+  },
+} as const;
+
 export const toolSchemas = {
   // Linear Authentication Tools
   // [getToolName('linear_auth')]: {
@@ -229,20 +422,74 @@ export const toolSchemas = {
         },
         update: {
           type: "object",
+          description:
+            "Fields to set on every listed issue. Applied per-issue; the result reports succeeded/failed counts.",
           properties: {
             stateId: {
               type: "string",
-              description: "New state ID",
+              description: "New workflow state UUID",
               optional: true,
             },
             assigneeId: {
               type: "string",
-              description: "New assignee ID",
+              description: "New assignee UUID",
               optional: true,
             },
             priority: {
               type: "number",
-              description: "New priority (0-4)",
+              description: "New priority (0=None,1=Urgent,2=High,3=Normal,4=Low)",
+              optional: true,
+            },
+            addedLabelIds: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "Label UUIDs to ADD without disturbing existing labels (non-destructive — use this for bulk-tagging e.g. ready-for-*).",
+              optional: true,
+            },
+            removedLabelIds: {
+              type: "array",
+              items: { type: "string" },
+              description: "Label UUIDs to REMOVE.",
+              optional: true,
+            },
+            labelIds: {
+              type: "array",
+              items: { type: "string" },
+              description:
+                "REPLACE the entire label set with these UUIDs (destructive — prefer addedLabelIds/removedLabelIds for bulk).",
+              optional: true,
+            },
+            cycleId: {
+              type: "string",
+              description:
+                "Assign to this cycle UUID (or null to clear). Use linear_list_cycles to resolve current.",
+              optional: true,
+            },
+            projectId: {
+              type: "string",
+              description: "Move to this project UUID",
+              optional: true,
+            },
+            projectMilestoneId: {
+              type: "string",
+              description:
+                "Set the project milestone UUID (the issue must be in that project).",
+              optional: true,
+            },
+            parentId: {
+              type: "string",
+              description: "Set the parent issue UUID (or null to detach)",
+              optional: true,
+            },
+            dueDate: {
+              type: "string",
+              description: "Due date YYYY-MM-DD (or null to clear)",
+              optional: true,
+            },
+            estimate: {
+              type: "number",
+              description: "Point estimate",
               optional: true,
             },
           },
@@ -348,33 +595,14 @@ export const toolSchemas = {
           description: "Search query string",
           optional: true,
         },
-        teamIds: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "Filter by team IDs",
-          optional: true,
-        },
-        assigneeIds: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "Filter by assignee IDs",
-          optional: true,
-        },
-        states: {
-          type: "array",
-          items: {
-            type: "string",
-          },
-          description: "Filter by state names",
-          optional: true,
-        },
-        priority: {
-          type: "number",
-          description: "Filter by priority (0-4)",
+        // Full filter vocabulary, symmetric with linear_create_view /
+        // linear_update_view (includes notStates, notLabels, noLabels,
+        // noProject, parentStates/notParentStates, updatedBefore).
+        ...VIEW_FILTER_PROPERTIES,
+        lean: {
+          type: "boolean",
+          description:
+            "Omit issue descriptions from results (default true) to protect the context window. Set false to include full bodies.",
           optional: true,
         },
         first: {
@@ -431,6 +659,76 @@ export const toolSchemas = {
           description: "Filter by priority (0-4)",
           optional: true,
         },
+        projectId: {
+          type: "string",
+          description: "Filter to a single project (UUID)",
+          optional: true,
+        },
+        labels: {
+          type: "array",
+          items: { type: "string" },
+          description: "Filter to issues having ANY of these label names",
+          optional: true,
+        },
+        labelIds: {
+          type: "array",
+          items: { type: "string" },
+          description:
+            "Filter to issues having ANY of these label UUIDs. Takes precedence over `labels`.",
+          optional: true,
+        },
+        unassigned: {
+          type: "boolean",
+          description: "Only issues with no assignee. Overrides assigneeIds.",
+          optional: true,
+        },
+        stateTypes: {
+          type: "array",
+          items: {
+            type: "string",
+            enum: [
+              "backlog",
+              "unstarted",
+              "started",
+              "completed",
+              "canceled",
+            ],
+          },
+          description:
+            "Filter by workflow state TYPE (team-independent). Combines with `states`.",
+          optional: true,
+        },
+        updatedSince: {
+          type: "string",
+          description:
+            "Only issues updated on/after this ISO-8601 timestamp",
+          optional: true,
+        },
+        createdSince: {
+          type: "string",
+          description: "Only issues created on/after this ISO-8601 timestamp",
+          optional: true,
+        },
+        blocked: {
+          type: "boolean",
+          description: "Only issues blocked by another issue",
+          optional: true,
+        },
+        blocking: {
+          type: "boolean",
+          description: "Only issues that block another issue",
+          optional: true,
+        },
+        parentId: {
+          type: "string",
+          description: "Only subtasks of this parent issue (UUID)",
+          optional: true,
+        },
+        noParent: {
+          type: "boolean",
+          description: "Only top-level issues (no parent). Overrides parentId.",
+          optional: true,
+        },
         first: {
           type: "number",
           description: "Number of issues to return (default: 25)",
@@ -474,7 +772,57 @@ export const toolSchemas = {
   [getToolName("linear_get_issue")]: {
     name: getToolName("linear_get_issue"),
     description: getToolDescription(
-      "Get a single issue by identifier, including all comments"
+      "Get a single issue: full body, metadata, parent/child subtasks, cross-linked issue identifiers, and the most recent comments (default 2, newest-first, long bodies truncated). Older/full comments are signalled by a `hasMore` flag — page them with linear_get_issue_comments. Raise commentLimit to pull more inline."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        identifier: {
+          type: "string",
+          description: "Issue identifier (e.g., 'ENG-123')",
+        },
+        commentLimit: {
+          type: "number",
+          description:
+            "Number of most-recent comments to include (default 2). Set higher to pull more of the thread inline.",
+          optional: true,
+        },
+      },
+      required: ["identifier"],
+    },
+  },
+
+  [getToolName("linear_get_issue_comments")]: {
+    name: getToolName("linear_get_issue_comments"),
+    description: getToolDescription(
+      "Get the full comment thread for an issue, paginated (oldest-first). Use after linear_get_issue when its `comments.hasMore` is true or you need the complete discussion history."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        identifier: {
+          type: "string",
+          description: "Issue identifier (e.g., 'ENG-123')",
+        },
+        first: {
+          type: "number",
+          description: "Comments per page (default 50)",
+          optional: true,
+        },
+        after: {
+          type: "string",
+          description: "Pagination cursor (from prior pageInfo.endCursor)",
+          optional: true,
+        },
+      },
+      required: ["identifier"],
+    },
+  },
+
+  [getToolName("linear_get_issue_relations")]: {
+    name: getToolName("linear_get_issue_relations"),
+    description: getToolDescription(
+      "Get formal Linear relations for an issue: blocks, blocked-by, related, duplicate. Use to detect blocking deadlocks and existing links."
     ),
     inputSchema: {
       type: "object",
@@ -485,6 +833,274 @@ export const toolSchemas = {
         },
       },
       required: ["identifier"],
+    },
+  },
+
+  [getToolName("linear_get_issue_history")]: {
+    name: getToolName("linear_get_issue_history"),
+    description: getToolDescription(
+      "Get an issue's activity history (state changes, assignments, priority/title/relation changes) with timestamps. Note: comment additions are NOT included — use linear_get_issue for comments."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        identifier: {
+          type: "string",
+          description: "Issue identifier (e.g., 'ENG-123')",
+        },
+        first: {
+          type: "number",
+          description: "Max history entries to return (default 50)",
+          optional: true,
+        },
+      },
+      required: ["identifier"],
+    },
+  },
+
+  [getToolName("linear_create_issue_relation")]: {
+    name: getToolName("linear_create_issue_relation"),
+    description: getToolDescription(
+      "Create a formal relation between two issues. Accepts identifiers (e.g. 'ENG-123') or UUIDs. To make A block B, set issueId=A, relatedIssueId=B, type='blocks'."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        issueId: {
+          type: "string",
+          description: "Source issue identifier or UUID",
+        },
+        relatedIssueId: {
+          type: "string",
+          description: "Related issue identifier or UUID",
+        },
+        type: {
+          type: "string",
+          enum: ["blocks", "related", "duplicate"],
+          description:
+            "Relation type. 'blocks' = issueId blocks relatedIssueId. (No 'blocked-by' — reverse the args instead.)",
+        },
+      },
+      required: ["issueId", "relatedIssueId", "type"],
+    },
+  },
+
+  [getToolName("linear_list_views")]: {
+    name: getToolName("linear_list_views"),
+    description: getToolDescription(
+      "List custom/saved Linear views with their IDs. Use to find a view's UUID before calling linear_get_view_issues."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        first: {
+          type: "number",
+          description: "Max views to return (default 50)",
+          optional: true,
+        },
+      },
+    },
+  },
+
+  [getToolName("linear_get_view_issues")]: {
+    name: getToolName("linear_get_view_issues"),
+    description: getToolDescription(
+      "Get the issues a custom/saved view resolves to (the view's own filter applied). Get the view UUID from linear_list_views."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Custom view UUID (from linear_list_views)",
+        },
+        first: {
+          type: "number",
+          description: "Max issues to return (default 50)",
+          optional: true,
+        },
+      },
+      required: ["id"],
+    },
+  },
+
+  [getToolName("linear_create_view")]: {
+    name: getToolName("linear_create_view"),
+    description: getToolDescription(
+      "Create a custom/saved Linear view. The filter is described with the same flat knobs as linear_search_issues (team/assignee/state/labels/project/parent/dates). Omit teamId for a workspace-shared view; provide it to scope to a team. An empty filter creates a view over all issues."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        name: { type: "string", description: "View name" },
+        description: {
+          type: "string",
+          description: "Optional view description",
+          optional: true,
+        },
+        teamId: {
+          type: "string",
+          description:
+            "Scope the view to this team (UUID). Omit for a workspace-shared view.",
+          optional: true,
+        },
+        shared: {
+          type: "boolean",
+          description:
+            "Shared (team-visible in the Linear Views nav) vs private. API-created views default to private and DON'T appear in the sidebar for anyone — set true for team-visible loop instruments.",
+          optional: true,
+        },
+        ...VIEW_FILTER_PROPERTIES,
+      },
+      required: ["name"],
+    },
+  },
+
+  [getToolName("linear_update_view")]: {
+    name: getToolName("linear_update_view"),
+    description: getToolDescription(
+      "Update a custom view by UUID. Only provided fields change. Supplying ANY filter knob replaces the view's whole filter (no partial merge); omit all filter knobs to rename/re-describe without touching the filter."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Custom view UUID (from linear_list_views)",
+        },
+        name: { type: "string", description: "New name", optional: true },
+        description: {
+          type: "string",
+          description: "New description",
+          optional: true,
+        },
+        teamId: {
+          type: "string",
+          description: "Re-scope to this team (UUID)",
+          optional: true,
+        },
+        shared: {
+          type: "boolean",
+          description:
+            "Set true to make the view team-visible in the Linear Views nav (API-created views default private/hidden).",
+          optional: true,
+        },
+        ...VIEW_FILTER_PROPERTIES,
+      },
+      required: ["id"],
+    },
+  },
+
+  [getToolName("linear_delete_view")]: {
+    name: getToolName("linear_delete_view"),
+    description: getToolDescription(
+      "Delete a custom view by UUID. Get the UUID from linear_list_views."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Custom view UUID (from linear_list_views)",
+        },
+      },
+      required: ["id"],
+    },
+  },
+
+  [getToolName("linear_list_cycles")]: {
+    name: getToolName("linear_list_cycles"),
+    description: getToolDescription(
+      "List cycles (sprints) with their IDs, dates, progress, and isActive/isNext/isPrevious flags. Use to find the current cycle's UUID or to drive cycle-membership Views. Optionally scope by team or position."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        teamId: {
+          type: "string",
+          description: "Scope to a team (UUID)",
+          optional: true,
+        },
+        filter: {
+          type: "string",
+          enum: ["current", "next", "previous", "past", "future"],
+          description: "Only the cycle(s) at this position",
+          optional: true,
+        },
+        first: {
+          type: "number",
+          description: "Max cycles to return (default 50)",
+          optional: true,
+        },
+      },
+    },
+  },
+
+  [getToolName("linear_list_notifications")]: {
+    name: getToolName("linear_list_notifications"),
+    description: getToolDescription(
+      "List the viewer's notifications (the Inbox) — the precise, dated answer to 'where am I @-mentioned'. Unlike the `subscriber` filter (static membership), notifications carry createdAt + type, so you get today-vs-historical and unread. Each item links its issue + actor + inboxUrl."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        mentionsOnly: {
+          type: "boolean",
+          description:
+            "Only @-mention notifications (issueMention + issueCommentMention).",
+          optional: true,
+        },
+        type: {
+          type: "string",
+          description:
+            "Raw notification type filter (e.g. 'issueAssignedToYou', 'issueNewComment'). Ignored if mentionsOnly is set.",
+          optional: true,
+        },
+        since: {
+          type: "string",
+          description:
+            "Only notifications created on/after this (ISO-8601 timestamp or relative duration like '-P1D' for the last day / 'today').",
+          optional: true,
+        },
+        unreadOnly: {
+          type: "boolean",
+          description: "Drop notifications already read (readAt set).",
+          optional: true,
+        },
+        first: {
+          type: "number",
+          description: "Max notifications to return (default 50)",
+          optional: true,
+        },
+      },
+    },
+  },
+
+  [getToolName("linear_set_issue_cycle")]: {
+    name: getToolName("linear_set_issue_cycle"),
+    description: getToolDescription(
+      "Assign (or clear) an issue's cycle. `cycle` accepts a cycle UUID, 'none' (unassign), or a keyword 'current'/'next'/'previous' (resolved to the matching cycle for the issue's team). For loop-controlled cycle membership with auto-add disabled."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        issueId: {
+          type: "string",
+          description: "Issue UUID",
+        },
+        cycle: {
+          type: "string",
+          description:
+            "'current' | 'next' | 'previous' | 'none' | a cycle UUID",
+        },
+        teamId: {
+          type: "string",
+          description:
+            "Disambiguate current/next/previous in a multi-team workspace (UUID)",
+          optional: true,
+        },
+      },
+      required: ["issueId", "cycle"],
     },
   },
 
@@ -946,6 +1562,141 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+    },
+  },
+
+  [getToolName("linear_get_document")]: {
+    name: getToolName("linear_get_document"),
+    description: getToolDescription(
+      "Get a Linear document (project/initiative doc) by id, including its full markdown content"
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Document ID (UUID)",
+        },
+      },
+      required: ["id"],
+    },
+  },
+
+  [getToolName("linear_list_documents")]: {
+    name: getToolName("linear_list_documents"),
+    description: getToolDescription(
+      "List documents in the Linear workspace. Returns metadata only (no content). Use linear_get_document for full content. When `query` is set, runs a free-text search and ignores other filters."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        limit: {
+          type: "number",
+          description: "Max results (default 50, max 250)",
+          optional: true,
+        },
+        cursor: {
+          type: "string",
+          description: "Next page cursor (from prior pageInfo.endCursor)",
+          optional: true,
+        },
+        orderBy: {
+          type: "string",
+          enum: ["createdAt", "updatedAt"],
+          description: "Sort field (default updatedAt)",
+          optional: true,
+        },
+        includeArchived: {
+          type: "boolean",
+          description: "Include archived documents (default false)",
+          optional: true,
+        },
+        projectId: {
+          type: "string",
+          description: "Filter by parent project ID (UUID)",
+          optional: true,
+        },
+        initiativeId: {
+          type: "string",
+          description: "Filter by parent initiative ID (UUID)",
+          optional: true,
+        },
+        creatorId: {
+          type: "string",
+          description: "Filter by creator user ID (UUID)",
+          optional: true,
+        },
+        createdAt: {
+          type: "string",
+          description:
+            "Created after: ISO-8601 timestamp (e.g. 2026-01-01T00:00:00Z)",
+          optional: true,
+        },
+        updatedAt: {
+          type: "string",
+          description: "Updated after: ISO-8601 timestamp",
+          optional: true,
+        },
+        query: {
+          type: "string",
+          description:
+            "Free-text search across document title and body. When set, takes precedence over other filters.",
+          optional: true,
+        },
+      },
+    },
+  },
+
+  [getToolName("linear_save_document")]: {
+    name: getToolName("linear_save_document"),
+    description: getToolDescription(
+      "Create or update a Linear document. Update if `id` is supplied, otherwise create. When creating, `title` is required and exactly one parent (projectId, initiativeId, issueId, or cycleId) must be supplied. Content is Markdown — pass literal newlines, not escape sequences."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Document ID to update. Omit to create a new document.",
+          optional: true,
+        },
+        title: {
+          type: "string",
+          description: "Document title (required when creating)",
+          optional: true,
+        },
+        content: {
+          type: "string",
+          description:
+            "Document body as Markdown. Use real newlines, not \\n. Mention users with @displayName.",
+          optional: true,
+        },
+        color: {
+          type: "string",
+          description: "Hex color (e.g. #4F46E5)",
+          optional: true,
+        },
+        projectId: {
+          type: "string",
+          description: "Parent project ID (UUID)",
+          optional: true,
+        },
+        initiativeId: {
+          type: "string",
+          description: "Parent initiative ID (UUID)",
+          optional: true,
+        },
+        issueId: {
+          type: "string",
+          description: "Parent issue ID (UUID)",
+          optional: true,
+        },
+        cycleId: {
+          type: "string",
+          description: "Parent cycle ID (UUID)",
+          optional: true,
+        },
+      },
     },
   },
 };

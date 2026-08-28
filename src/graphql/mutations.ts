@@ -14,6 +14,65 @@ export const CREATE_ISSUE_MUTATION = gql`
   }
 `;
 
+export const SET_ISSUE_CYCLE_MUTATION = gql`
+  mutation SetIssueCycle($id: String!, $input: IssueUpdateInput!) {
+    issueUpdate(id: $id, input: $input) {
+      success
+      issue {
+        id
+        identifier
+        title
+        cycle {
+          id
+          number
+          name
+          isActive
+        }
+      }
+    }
+  }
+`;
+
+export const CREATE_VIEW_MUTATION = gql`
+  mutation CreateView($input: CustomViewCreateInput!) {
+    customViewCreate(input: $input) {
+      success
+      customView {
+        id
+        name
+        slugId
+        organization {
+          urlKey
+        }
+      }
+    }
+  }
+`;
+
+export const UPDATE_VIEW_MUTATION = gql`
+  mutation UpdateView($id: String!, $input: CustomViewUpdateInput!) {
+    customViewUpdate(id: $id, input: $input) {
+      success
+      customView {
+        id
+        name
+        slugId
+        organization {
+          urlKey
+        }
+      }
+    }
+  }
+`;
+
+export const DELETE_VIEW_MUTATION = gql`
+  mutation DeleteView($id: String!) {
+    customViewDelete(id: $id) {
+      success
+    }
+  }
+`;
+
 export const CREATE_ISSUES_MUTATION = gql`
   mutation CreateIssues($input: [IssueCreateInput!]!) {
     issueCreate(input: $input) {
@@ -102,6 +161,26 @@ export const UPDATE_ISSUE_MUTATION = gql`
           title
         }
         updatedAt
+      }
+    }
+  }
+`;
+
+export const CREATE_ISSUE_RELATION_MUTATION = gql`
+  mutation CreateIssueRelation($input: IssueRelationCreateInput!) {
+    issueRelationCreate(input: $input) {
+      success
+      issueRelation {
+        id
+        type
+        issue {
+          identifier
+          title
+        }
+        relatedIssue {
+          identifier
+          title
+        }
       }
     }
   }
@@ -210,3 +289,52 @@ export const DELETE_PROJECT_MILESTONE = gql`
     }
   }
 `;
+
+export const CREATE_DOCUMENT_MUTATION = gql`
+  mutation CreateDocument($input: DocumentCreateInput!) {
+    documentCreate(input: $input) {
+      success
+      document {
+        id
+        title
+        icon
+        url
+        content
+        updatedAt
+        project {
+          id
+          name
+        }
+        initiative {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
+export const UPDATE_DOCUMENT_MUTATION = gql`
+  mutation UpdateDocument($id: String!, $input: DocumentUpdateInput!) {
+    documentUpdate(id: $id, input: $input) {
+      success
+      document {
+        id
+        title
+        icon
+        url
+        content
+        updatedAt
+        project {
+          id
+          name
+        }
+        initiative {
+          id
+          name
+        }
+      }
+    }
+  }
+`;
+
