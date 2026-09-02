@@ -885,6 +885,44 @@ export const toolSchemas = {
     },
   },
 
+  [getToolName("linear_delete_issue_relation")]: {
+    name: getToolName("linear_delete_issue_relation"),
+    description: getToolDescription(
+      "Remove a formal relation between two issues (e.g. clear a wrong blocking link). Either pass relationId from linear_get_issue_relations, or name both issues via issueId + relatedIssueId. Errors rather than guessing if the pair has several relations and no 'type' is given. Deletes only the link — both issues are untouched."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        relationId: {
+          type: "string",
+          description:
+            "Relation UUID, as returned in the 'relationId' field of linear_get_issue_relations. Takes precedence over issueId/relatedIssueId when supplied.",
+          optional: true,
+        },
+        issueId: {
+          type: "string",
+          description:
+            "Source issue identifier (e.g. 'ENG-123') or UUID. Required unless relationId is given.",
+          optional: true,
+        },
+        relatedIssueId: {
+          type: "string",
+          description:
+            "Related issue identifier or UUID. Required unless relationId is given.",
+          optional: true,
+        },
+        type: {
+          type: "string",
+          enum: ["blocks", "blocked-by", "related", "duplicate"],
+          description:
+            "Narrows which relation to remove when the pair has more than one. Read from issueId's point of view, matching what linear_get_issue_relations shows for that issue — so 'blocked-by' is valid here (unlike on create).",
+          optional: true,
+        },
+      },
+      required: [],
+    },
+  },
+
   [getToolName("linear_list_views")]: {
     name: getToolName("linear_list_views"),
     description: getToolDescription(

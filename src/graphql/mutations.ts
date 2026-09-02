@@ -186,6 +186,14 @@ export const CREATE_ISSUE_RELATION_MUTATION = gql`
   }
 `;
 
+export const DELETE_ISSUE_RELATION_MUTATION = gql`
+  mutation DeleteIssueRelation($id: String!) {
+    issueRelationDelete(id: $id) {
+      success
+    }
+  }
+`;
+
 export const DELETE_ISSUE_MUTATION = gql`
   mutation DeleteIssue($id: String!) {
     issueDelete(id: $id) {

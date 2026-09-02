@@ -154,6 +154,18 @@ export interface CreateIssueRelationInput {
   type: IssueRelationType;
 }
 
+/**
+ * Delete a relation either by its own UUID (`relationId`) or by naming the two
+ * issues it joins. `type` disambiguates when a pair carries more than one
+ * relation; "blocked-by" is accepted and resolved against inverse relations.
+ */
+export interface DeleteIssueRelationInput {
+  relationId?: string; // Relation UUID — takes precedence when supplied
+  issueId?: string; // Issue identifier (e.g. "ENG-123") OR UUID
+  relatedIssueId?: string; // Related issue identifier OR UUID
+  type?: IssueRelationType | "blocked-by";
+}
+
 export interface DeleteIssueInput {
   id: string;
 }
@@ -514,6 +526,12 @@ export interface CreateIssueRelationResponse {
   };
 }
 
+export interface DeleteIssueRelationResponse {
+  issueRelationDelete: {
+    success: boolean;
+  };
+}
+
 /**
  * Handler method types
  */
@@ -538,6 +556,9 @@ export interface IssueHandlerMethods {
   handleGetIssueHistory(args: GetIssueHistoryInput): Promise<BaseToolResponse>;
   handleCreateIssueRelation(
     args: CreateIssueRelationInput
+  ): Promise<BaseToolResponse>;
+  handleDeleteIssueRelation(
+    args: DeleteIssueRelationInput
   ): Promise<BaseToolResponse>;
   handleListViews(args: ListViewsInput): Promise<BaseToolResponse>;
   handleGetViewIssues(args: GetViewIssuesInput): Promise<BaseToolResponse>;

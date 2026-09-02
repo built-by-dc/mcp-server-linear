@@ -23,9 +23,11 @@ import {
   GetIssueRelationsInput,
   GetIssueHistoryInput,
   CreateIssueRelationInput,
+  DeleteIssueRelationInput,
   GetIssueRelationsResponse,
   GetIssueHistoryResponse,
   CreateIssueRelationResponse,
+  DeleteIssueRelationResponse,
   ListViewsInput,
   GetViewIssuesInput,
   ListViewsResponse,
@@ -623,13 +625,17 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
         throw new Error(`Issue ${args.identifier} not found`);
       }
 
+      // `relationId` is surfaced so callers can feed it straight to
+      // linear_delete_issue_relation.
       const outgoing = (result.issue.relations?.nodes ?? []).map((r) => ({
+        relationId: r.id,
         // From this issue's perspective the type reads directly.
         type: r.type,
         issue: r.relatedIssue,
       }));
 
       const incoming = (result.issue.inverseRelations?.nodes ?? []).map((r) => ({
+        relationId: r.id,
         // Seen from the other side: a `blocks` becomes `blocked-by`, etc.
         type: r.type === "blocks" ? "blocked-by" : r.type,
         issue: r.issue,
@@ -716,6 +722,114 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
       return this.createJsonResponse(result.issueRelationCreate);
     } catch (error) {
       this.handleError(error, "create issue relation");
+    }
+  }
+
+  /**
+   * Delete a formal relation between two issues. Either pass the relation's own
+   * UUID (`relationId`, as returned by linear_get_issue_relations) or name both
+   * issues and let this resolve it. Refuses to guess when a pair carries more
+   * than one relation and no `type` narrows it.
+   */
+  async handleDeleteIssueRelation(
+    args: DeleteIssueRelationInput
+  ): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+
+      const validTypes = ["blocks", "blocked-by", "related", "duplicate"];
+      if (args.type && !validTypes.includes(args.type)) {
+        throw new Error(
+          `Invalid relation type "${args.type}". Must be one of: ${validTypes.join(
+            ", "
+          )}`
+        );
+      }
+
+      let relationId = args.relationId;
+      let deleted: Record<string, unknown> | undefined;
+
+      if (!relationId) {
+        if (!args.issueId || !args.relatedIssueId) {
+          throw new Error(
+            "Provide either relationId, or both issueId and relatedIssueId."
+          );
+        }
+
+        const [relations, relatedUuid] = await Promise.all([
+          client.getIssueRelations(args.issueId),
+          this.resolveIssueId(client, args.relatedIssueId),
+        ]);
+
+        if (!relations.issue) {
+          throw new Error(`Issue ${args.issueId} not found`);
+        }
+        const sourceIdentifier = relations.issue.identifier;
+
+        // Normalise both directions to the source issue's point of view, the
+        // same way handleGetIssueRelations does, so the `type` the caller saw
+        // there is the `type` they can pass here.
+        const candidates = [
+          ...(relations.issue.relations?.nodes ?? []).map((r) => ({
+            relationId: r.id,
+            type: r.type,
+            issue: r.relatedIssue,
+          })),
+          ...(relations.issue.inverseRelations?.nodes ?? []).map((r) => ({
+            relationId: r.id,
+            type: r.type === "blocks" ? "blocked-by" : r.type,
+            issue: r.issue,
+          })),
+        ].filter((c) => c.issue?.id === relatedUuid);
+
+        const matches = args.type
+          ? candidates.filter((c) => c.type === args.type)
+          : candidates;
+
+        if (matches.length === 0) {
+          throw new Error(
+            `No ${args.type ? `'${args.type}' ` : ""}relation found between ` +
+              `${sourceIdentifier} and ${args.relatedIssueId}.` +
+              (candidates.length
+                ? ` Existing between this pair: ${candidates
+                    .map((c) => c.type)
+                    .join(", ")}.`
+                : "")
+          );
+        }
+
+        if (matches.length > 1) {
+          throw new Error(
+            `Ambiguous: ${matches.length} relations link ${sourceIdentifier} ` +
+              `and ${args.relatedIssueId} (${matches
+                .map((c) => `${c.type}=${c.relationId}`)
+                .join(", ")}). Pass 'type' or 'relationId' to disambiguate.`
+          );
+        }
+
+        relationId = matches[0].relationId;
+        deleted = {
+          type: matches[0].type,
+          from: sourceIdentifier,
+          to: matches[0].issue?.identifier,
+        };
+      }
+
+      const result = (await client.deleteIssueRelation(
+        relationId
+      )) as DeleteIssueRelationResponse;
+
+      if (!result.issueRelationDelete?.success) {
+        throw new Error("Failed to delete issue relation");
+      }
+
+      return this.createJsonResponse({
+        success: true,
+        relationId,
+        ...(deleted ? { deleted } : {}),
+      });
+    } catch (error) {
+      this.handleError(error, "delete issue relation");
     }
   }
 

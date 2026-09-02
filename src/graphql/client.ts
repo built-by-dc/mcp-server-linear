@@ -14,6 +14,7 @@ import {
   GetIssueRelationsResponse,
   GetIssueHistoryResponse,
   CreateIssueRelationResponse,
+  DeleteIssueRelationResponse,
   IssueRelationType,
   ListViewsResponse,
   GetViewIssuesResponse,
@@ -348,6 +349,16 @@ export class LinearGraphQLClient {
     return this.execute<CreateIssueRelationResponse>(
       CREATE_ISSUE_RELATION_MUTATION,
       { input: { issueId, relatedIssueId, type } }
+    );
+  }
+
+  // Delete a formal relation between two issues. `id` is the relation's own
+  // UUID (from linear_get_issue_relations), not an issue id.
+  async deleteIssueRelation(id: string): Promise<DeleteIssueRelationResponse> {
+    const { DELETE_ISSUE_RELATION_MUTATION } = await import("./mutations.js");
+    return this.execute<DeleteIssueRelationResponse>(
+      DELETE_ISSUE_RELATION_MUTATION,
+      { id }
     );
   }
 
