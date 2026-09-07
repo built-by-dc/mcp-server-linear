@@ -158,6 +158,13 @@ export class HandlerFactory {
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
       },
+      [getToolName("linear_delete_issue_relation")]: {
+        handler: this.issueHandler,
+        method: "handleDeleteIssueRelation",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
       [getToolName("linear_list_views")]: {
         handler: this.issueHandler,
         method: "handleListViews",
@@ -247,6 +254,28 @@ export class HandlerFactory {
       [getToolName("linear_list_projects")]: {
         handler: this.projectHandler,
         method: "handleListProjects",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+
+      [getToolName("linear_update_project")]: {
+        handler: this.projectHandler,
+        method: "handleUpdateProject",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_delete_project")]: {
+        handler: this.projectHandler,
+        method: "handleDeleteProject",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_restore_project")]: {
+        handler: this.projectHandler,
+        method: "handleRestoreProject",
         description: process.env.TOOL_PREFIX
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,

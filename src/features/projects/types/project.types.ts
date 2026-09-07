@@ -175,3 +175,66 @@ export interface SearchProjectsResponse {
 export interface GetProjectMilestonesResponse {
   projectMilestones: ProjectMilestoneConnection;
 }
+
+/**
+ * A project as returned by the project mutations.
+ */
+export interface ProjectSummary {
+  id: string;
+  name: string;
+  slugId: string;
+  url: string;
+  description?: string;
+  priority?: number;
+  status?: { id: string; name: string; type: string };
+  lead?: { id: string; name: string } | null;
+  teams?: { nodes: Array<{ id: string; key: string; name: string }> };
+  startDate?: string;
+  targetDate?: string;
+  completedAt?: string;
+  canceledAt?: string;
+  archivedAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Fields accepted when updating a project.
+ * Mirrors the useful subset of Linear's ProjectUpdateInput. `trashed` is
+ * deliberately excluded - use deleteProject/restoreProject instead.
+ */
+export interface ProjectUpdateFields {
+  name?: string;
+  description?: string;
+  content?: string;
+  statusId?: string;
+  leadId?: string;
+  memberIds?: string[];
+  teamIds?: string[];
+  labelIds?: string[];
+  startDate?: string;
+  targetDate?: string;
+  priority?: number;
+  icon?: string;
+  color?: string;
+  sortOrder?: number;
+}
+
+export interface UpdateProjectResponse {
+  projectUpdate: {
+    success: boolean;
+    project: ProjectSummary;
+  };
+}
+
+export interface DeleteProjectResponse {
+  projectDelete: {
+    success: boolean;
+  };
+}
+
+export interface RestoreProjectResponse {
+  projectUnarchive: {
+    success: boolean;
+    entity: ProjectSummary;
+  };
+}

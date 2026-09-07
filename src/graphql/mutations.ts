@@ -186,6 +186,14 @@ export const CREATE_ISSUE_RELATION_MUTATION = gql`
   }
 `;
 
+export const DELETE_ISSUE_RELATION_MUTATION = gql`
+  mutation DeleteIssueRelation($id: String!) {
+    issueRelationDelete(id: $id) {
+      success
+    }
+  }
+`;
+
 export const DELETE_ISSUE_MUTATION = gql`
   mutation DeleteIssue($id: String!) {
     issueDelete(id: $id) {
@@ -277,6 +285,75 @@ export const UPDATE_PROJECT_MILESTONE = gql`
             title
           }
         }
+      }
+    }
+  }
+`;
+
+/**
+ * Lean projection shared by the project mutations.
+ * Note: the field is `slugId`, not `slug`.
+ */
+const PROJECT_FIELDS = `
+  id
+  name
+  slugId
+  url
+  description
+  priority
+  status {
+    id
+    name
+    type
+  }
+  lead {
+    id
+    name
+  }
+  teams {
+    nodes {
+      id
+      key
+      name
+    }
+  }
+  startDate
+  targetDate
+  completedAt
+  canceledAt
+  archivedAt
+  updatedAt
+`;
+
+export const UPDATE_PROJECT = gql`
+  mutation UpdateProject($id: String!, $input: ProjectUpdateInput!) {
+    projectUpdate(id: $id, input: $input) {
+      success
+      project {
+        ${PROJECT_FIELDS}
+      }
+    }
+  }
+`;
+
+/**
+ * Linear has no `projectArchive`. `projectDelete` is the trash operation and is
+ * reversible via `projectUnarchive`.
+ */
+export const DELETE_PROJECT = gql`
+  mutation DeleteProject($id: String!) {
+    projectDelete(id: $id) {
+      success
+    }
+  }
+`;
+
+export const RESTORE_PROJECT = gql`
+  mutation RestoreProject($id: String!) {
+    projectUnarchive(id: $id) {
+      success
+      entity {
+        ${PROJECT_FIELDS}
       }
     }
   }

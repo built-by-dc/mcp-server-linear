@@ -18,6 +18,7 @@ export interface ToolHandler {
   handleGetIssueRelations(args: any): Promise<BaseToolResponse>;
   handleGetIssueHistory(args: any): Promise<BaseToolResponse>;
   handleCreateIssueRelation(args: any): Promise<BaseToolResponse>;
+  handleDeleteIssueRelation(args: any): Promise<BaseToolResponse>;
   handleListViews(args: any): Promise<BaseToolResponse>;
   handleGetViewIssues(args: any): Promise<BaseToolResponse>;
   handleCreateView(args: any): Promise<BaseToolResponse>;
@@ -34,6 +35,9 @@ export interface ToolHandler {
   handleCreateProjectWithIssues(args: any): Promise<BaseToolResponse>;
   handleGetProject(args: any): Promise<BaseToolResponse>;
   handleListProjects(args: any): Promise<BaseToolResponse>;
+  handleUpdateProject(args: any): Promise<BaseToolResponse>;
+  handleDeleteProject(args: any): Promise<BaseToolResponse>;
+  handleRestoreProject(args: any): Promise<BaseToolResponse>;
 
   // Team Operations
   handleGetTeams(args: any): Promise<BaseToolResponse>;
