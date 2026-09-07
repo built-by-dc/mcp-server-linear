@@ -30,3 +30,10 @@ Thumbs.db
 
 # Test coverage
 coverage/
+
+# npm pack output
+# The installed MCP server is built from this repo and packed here. A tarball
+# left in the tree outlives the branch it came from: v1.9.0 was installed from
+# one whose source lived only on an unpushed local branch, so a rebuild from
+# main would silently have dropped a shipped tool (TEH-4363).
+*.tgz
