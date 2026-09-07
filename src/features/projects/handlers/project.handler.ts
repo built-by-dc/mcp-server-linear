@@ -2,6 +2,7 @@ import { BaseHandler } from "../../../core/handlers/base.handler.js";
 import { BaseToolResponse } from "../../../core/interfaces/tool-handler.interface.js";
 import { LinearAuth } from "../../../auth.js";
 import { LinearGraphQLClient } from "../../../graphql/client.js";
+import { ProjectUpdateFields } from "../types/project.types.js";
 
 /**
  * Handler for project-related operations.
@@ -209,6 +210,82 @@ export class ProjectHandler extends BaseHandler {
   /**
    * Delete a project milestone
    */
+  /**
+   * Updates a project's own fields (name, description, status, lead, dates).
+   */
+  async handleUpdateProject(args: any): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const input: ProjectUpdateFields = {
+        name: args.name,
+        description: args.description,
+        content: args.content,
+        statusId: args.statusId,
+        leadId: args.leadId,
+        memberIds: args.memberIds,
+        teamIds: args.teamIds,
+        labelIds: args.labelIds,
+        startDate: args.startDate,
+        targetDate: args.targetDate,
+        priority: args.priority,
+        icon: args.icon,
+        color: args.color,
+        sortOrder: args.sortOrder,
+      };
+
+      // Drop undefined keys so an omitted field is left untouched rather than nulled.
+      const cleaned = Object.fromEntries(
+        Object.entries(input).filter(([, v]) => v !== undefined)
+      ) as ProjectUpdateFields;
+
+      if (Object.keys(cleaned).length === 0) {
+        throw new Error(
+          "update project requires at least one field to change besides id"
+        );
+      }
+
+      const result = await client.updateProject(args.id, cleaned);
+
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "update project");
+    }
+  }
+
+  /**
+   * Moves a project to the trash. Reversible via handleRestoreProject.
+   */
+  async handleDeleteProject(args: any): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const result = await client.deleteProject(args.id);
+
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "delete project");
+    }
+  }
+
+  /**
+   * Restores a trashed or archived project.
+   */
+  async handleRestoreProject(args: any): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const result = await client.restoreProject(args.id);
+
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "restore project");
+    }
+  }
+
   async handleDeleteProjectMilestone(args: any): Promise<BaseToolResponse> {
     try {
       const client = this.verifyAuth();

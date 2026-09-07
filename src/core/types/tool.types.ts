@@ -1445,6 +1445,128 @@ export const toolSchemas = {
     },
   },
   // Linear Project Milestone Tools
+  [getToolName("linear_update_project")]: {
+    name: getToolName("linear_update_project"),
+    description: getToolDescription(
+      "Update a project's own fields - name, description, status, lead, members, teams, dates, priority. Only the fields you pass are changed. Use linear_delete_project to trash a project."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Project ID (UUID) to update",
+        },
+        name: {
+          type: "string",
+          description: "New project name",
+          optional: true,
+        },
+        description: {
+          type: "string",
+          description: "New short description (the one-line summary)",
+          optional: true,
+        },
+        content: {
+          type: "string",
+          description: "New project body content (markdown)",
+          optional: true,
+        },
+        statusId: {
+          type: "string",
+          description:
+            "New project status UUID (Backlog / Planned / In Progress / Completed / Canceled). These are org-level project statuses, not issue workflow states.",
+          optional: true,
+        },
+        leadId: {
+          type: "string",
+          description: "User UUID to set as project lead",
+          optional: true,
+        },
+        memberIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Replacement list of project member UUIDs",
+          optional: true,
+        },
+        teamIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Replacement list of team UUIDs this project belongs to",
+          optional: true,
+        },
+        labelIds: {
+          type: "array",
+          items: { type: "string" },
+          description: "Replacement list of project label UUIDs",
+          optional: true,
+        },
+        startDate: {
+          type: "string",
+          description: "Start date (YYYY-MM-DD)",
+          optional: true,
+        },
+        targetDate: {
+          type: "string",
+          description: "Target date (YYYY-MM-DD)",
+          optional: true,
+        },
+        priority: {
+          type: "number",
+          description: "Priority (0 none, 1 urgent, 2 high, 3 medium, 4 low)",
+          optional: true,
+        },
+        icon: {
+          type: "string",
+          description: "Project icon",
+          optional: true,
+        },
+        color: {
+          type: "string",
+          description: "Project colour (hex)",
+          optional: true,
+        },
+        sortOrder: {
+          type: "number",
+          description: "Sort order",
+          optional: true,
+        },
+      },
+      required: ["id"],
+    },
+  },
+  [getToolName("linear_delete_project")]: {
+    name: getToolName("linear_delete_project"),
+    description: getToolDescription(
+      "Move a project to the trash. Reversible with linear_restore_project. Linear has no separate archive operation for projects. Issues in the project are not deleted."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Project ID (UUID) to trash",
+        },
+      },
+      required: ["id"],
+    },
+  },
+  [getToolName("linear_restore_project")]: {
+    name: getToolName("linear_restore_project"),
+    description: getToolDescription(
+      "Restore a trashed or archived project (projectUnarchive)."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Project ID (UUID) to restore",
+        },
+      },
+      required: ["id"],
+    },
+  },
   [getToolName("linear_get_project_milestones")]: {
     name: getToolName("linear_get_project_milestones"),
     description: getToolDescription(

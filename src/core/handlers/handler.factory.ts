@@ -259,6 +259,28 @@ export class HandlerFactory {
           : undefined,
       },
 
+      [getToolName("linear_update_project")]: {
+        handler: this.projectHandler,
+        method: "handleUpdateProject",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_delete_project")]: {
+        handler: this.projectHandler,
+        method: "handleDeleteProject",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_restore_project")]: {
+        handler: this.projectHandler,
+        method: "handleRestoreProject",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+
       // Project Milestone tools
       [getToolName("linear_get_project_milestones")]: {
         handler: this.projectHandler,

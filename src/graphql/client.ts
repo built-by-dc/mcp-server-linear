@@ -34,6 +34,10 @@ import {
   ProjectFilter,
   GetProjectMilestonesResponse,
   ProjectMilestone,
+  ProjectUpdateFields,
+  UpdateProjectResponse,
+  DeleteProjectResponse,
+  RestoreProjectResponse,
 } from "../features/projects/types/project.types.js";
 import {
   TeamResponse,
@@ -528,6 +532,27 @@ export class LinearGraphQLClient {
   }> {
     const { UPDATE_PROJECT_MILESTONE } = await import("./mutations.js");
     return this.execute(UPDATE_PROJECT_MILESTONE, { id, input });
+  }
+
+  // Update a project's own fields (name, status, lead, dates, ...)
+  async updateProject(
+    id: string,
+    input: ProjectUpdateFields
+  ): Promise<UpdateProjectResponse> {
+    const { UPDATE_PROJECT } = await import("./mutations.js");
+    return this.execute<UpdateProjectResponse>(UPDATE_PROJECT, { id, input });
+  }
+
+  // Move a project to the trash (reversible via restoreProject)
+  async deleteProject(id: string): Promise<DeleteProjectResponse> {
+    const { DELETE_PROJECT } = await import("./mutations.js");
+    return this.execute<DeleteProjectResponse>(DELETE_PROJECT, { id });
+  }
+
+  // Restore a trashed/archived project
+  async restoreProject(id: string): Promise<RestoreProjectResponse> {
+    const { RESTORE_PROJECT } = await import("./mutations.js");
+    return this.execute<RestoreProjectResponse>(RESTORE_PROJECT, { id });
   }
 
   // Delete a project milestone
