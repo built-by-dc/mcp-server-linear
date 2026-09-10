@@ -125,4 +125,37 @@ export class DocumentHandler extends BaseHandler {
       this.handleError(error, "save document");
     }
   }
+
+  /**
+   * Moves a document to the trash. Reversible via handleRestoreDocument.
+   */
+  async handleDeleteDocument(args: any): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const result = await client.deleteDocument(args.id);
+
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "delete document");
+    }
+  }
+
+  /**
+   * Restores a trashed document.
+   */
+  async handleRestoreDocument(args: any): Promise<BaseToolResponse> {
+    try {
+      const client = this.verifyAuth();
+      this.validateRequiredParams(args, ["id"]);
+
+      const result = await client.restoreDocument(args.id);
+
+      return this.createJsonResponse(result);
+    } catch (error) {
+      this.handleError(error, "restore document");
+    }
+  }
+
 }

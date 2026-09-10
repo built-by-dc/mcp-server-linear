@@ -38,6 +38,8 @@ export interface ToolHandler {
   handleUpdateProject(args: any): Promise<BaseToolResponse>;
   handleDeleteProject(args: any): Promise<BaseToolResponse>;
   handleRestoreProject(args: any): Promise<BaseToolResponse>;
+  handleDeleteDocument(args: any): Promise<BaseToolResponse>;
+  handleRestoreDocument(args: any): Promise<BaseToolResponse>;
 
   // Team Operations
   handleGetTeams(args: any): Promise<BaseToolResponse>;

@@ -9,6 +9,23 @@ export const CREATE_ISSUE_MUTATION = gql`
         identifier
         title
         url
+        # Requested because handleCreateIssue reports them. Without these the
+        # response read back a null project on every create, whether or not a
+        # project was set - a false negative that hid TEH-4370 defect 7.
+        project {
+          id
+          name
+        }
+        state {
+          id
+          name
+          type
+        }
+        parent {
+          id
+          identifier
+          title
+        }
       }
     }
   }
@@ -386,6 +403,32 @@ export const CREATE_DOCUMENT_MUTATION = gql`
           id
           name
         }
+      }
+    }
+  }
+`;
+
+/**
+ * Linear has no documentArchive: documentDelete is the trash operation and
+ * documentUnarchive is its inverse, mirroring projects.
+ */
+export const DELETE_DOCUMENT_MUTATION = gql`
+  mutation DeleteDocument($id: String!) {
+    documentDelete(id: $id) {
+      success
+    }
+  }
+`;
+
+export const RESTORE_DOCUMENT_MUTATION = gql`
+  mutation RestoreDocument($id: String!) {
+    documentUnarchive(id: $id) {
+      success
+      entity {
+        id
+        title
+        url
+        updatedAt
       }
     }
   }

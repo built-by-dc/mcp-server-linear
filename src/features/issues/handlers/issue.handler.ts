@@ -94,6 +94,7 @@ export class IssueHandler extends BaseHandler implements IssueHandlerMethods {
             title: issue.title,
             url: issue.url,
             project: issue.project,
+            state: issue.state,
             parent: issue.parent,
             children: issue.children,
           },

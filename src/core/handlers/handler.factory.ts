@@ -395,6 +395,20 @@ export class HandlerFactory {
           ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
           : undefined,
       },
+      [getToolName("linear_delete_document")]: {
+        handler: this.documentHandler,
+        method: "handleDeleteDocument",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
+      [getToolName("linear_restore_document")]: {
+        handler: this.documentHandler,
+        method: "handleRestoreDocument",
+        description: process.env.TOOL_PREFIX
+          ? `Tool for ${process.env.TOOL_PREFIX} Linear account`
+          : undefined,
+      },
     };
 
     const handlerInfo = handlerMap[toolName];

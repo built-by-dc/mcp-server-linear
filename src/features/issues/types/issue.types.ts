@@ -13,6 +13,7 @@ export interface CreateIssueInput {
   assigneeId?: string;
   priority?: number;
   projectId?: string;
+  stateId?: string;
   createAsUser?: string; // Name to display for the created issue
   displayIconUrl?: string; // URL of the avatar to display
 }

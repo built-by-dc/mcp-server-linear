@@ -245,6 +245,7 @@ export const toolSchemas = {
         },
       },
       required: ["code"],
+      additionalProperties: false,
     },
   },
 
@@ -255,6 +256,18 @@ export const toolSchemas = {
     inputSchema: {
       type: "object",
       properties: {
+        projectId: {
+          type: "string",
+          description:
+            "Project UUID to file the issue under. MUST be declared here - an undeclared property is stripped by the MCP client before it reaches the server, which is why creates silently landed project-less (TEH-4370 defect 7).",
+          optional: true,
+        },
+        stateId: {
+          type: "string",
+          description:
+            "Workflow state UUID for the new issue. Omitted means the team default (Backlog for TEH).",
+          optional: true,
+        },
         title: {
           type: "string",
           description: "Issue title",
@@ -303,6 +316,7 @@ export const toolSchemas = {
         },
       },
       required: ["title", "description", "teamId"],
+      additionalProperties: false,
     },
   },
 
@@ -315,6 +329,12 @@ export const toolSchemas = {
     inputSchema: {
       type: "object",
       properties: {
+        allowDuplicateName: {
+          type: "boolean",
+          description:
+            "Create the project even though one with the same name already exists. Off by default: retrying a failed create is how duplicate projects appear.",
+          optional: true,
+        },
         project: {
           type: "object",
           properties: {
@@ -362,6 +382,7 @@ export const toolSchemas = {
         },
       },
       required: ["project", "issues"],
+      additionalProperties: false,
     },
     examples: [
       {
@@ -496,6 +517,7 @@ export const toolSchemas = {
         },
       },
       required: ["issueIds", "update"],
+      additionalProperties: false,
     },
   },
 
@@ -578,6 +600,7 @@ export const toolSchemas = {
         },
       },
       required: ["issueId"],
+      additionalProperties: false,
     },
   },
 
@@ -590,6 +613,12 @@ export const toolSchemas = {
     inputSchema: {
       type: "object",
       properties: {
+        filter: {
+          type: "object",
+          description:
+            "Legacy nested filter, still read by the handler for identifier and project lookups. Declared so that additionalProperties: false does not break it; prefer the flat knobs above.",
+          optional: true,
+        },
         query: {
           type: "string",
           description: "Search query string",
@@ -746,6 +775,7 @@ export const toolSchemas = {
         },
       },
       required: ["query"],
+      additionalProperties: false,
     },
   },
 
@@ -766,6 +796,7 @@ export const toolSchemas = {
         },
       },
       required: ["identifiers"],
+      additionalProperties: false,
     },
   },
 
@@ -789,6 +820,7 @@ export const toolSchemas = {
         },
       },
       required: ["identifier"],
+      additionalProperties: false,
     },
   },
 
@@ -816,6 +848,7 @@ export const toolSchemas = {
         },
       },
       required: ["identifier"],
+      additionalProperties: false,
     },
   },
 
@@ -833,6 +866,7 @@ export const toolSchemas = {
         },
       },
       required: ["identifier"],
+      additionalProperties: false,
     },
   },
 
@@ -855,6 +889,7 @@ export const toolSchemas = {
         },
       },
       required: ["identifier"],
+      additionalProperties: false,
     },
   },
 
@@ -882,6 +917,7 @@ export const toolSchemas = {
         },
       },
       required: ["issueId", "relatedIssueId", "type"],
+      additionalProperties: false,
     },
   },
 
@@ -920,6 +956,7 @@ export const toolSchemas = {
         },
       },
       required: [],
+      additionalProperties: false,
     },
   },
 
@@ -937,6 +974,7 @@ export const toolSchemas = {
           optional: true,
         },
       },
+      additionalProperties: false,
     },
   },
 
@@ -959,6 +997,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -991,6 +1030,7 @@ export const toolSchemas = {
         ...VIEW_FILTER_PROPERTIES,
       },
       required: ["name"],
+      additionalProperties: false,
     },
   },
 
@@ -1026,6 +1066,7 @@ export const toolSchemas = {
         ...VIEW_FILTER_PROPERTIES,
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1043,6 +1084,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1071,6 +1113,7 @@ export const toolSchemas = {
           optional: true,
         },
       },
+      additionalProperties: false,
     },
   },
 
@@ -1111,6 +1154,7 @@ export const toolSchemas = {
           optional: true,
         },
       },
+      additionalProperties: false,
     },
   },
 
@@ -1139,6 +1183,7 @@ export const toolSchemas = {
         },
       },
       required: ["issueId", "cycle"],
+      additionalProperties: false,
     },
   },
 
@@ -1151,6 +1196,7 @@ export const toolSchemas = {
     inputSchema: {
       type: "object",
       properties: {},
+      additionalProperties: false,
     },
   },
 
@@ -1160,6 +1206,7 @@ export const toolSchemas = {
     inputSchema: {
       type: "object",
       properties: {},
+      additionalProperties: false,
     },
   },
 
@@ -1175,6 +1222,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1190,6 +1238,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1242,6 +1291,7 @@ export const toolSchemas = {
           description: "Optional filter criteria for projects",
         },
       },
+      additionalProperties: false,
     },
   },
 
@@ -1314,6 +1364,7 @@ export const toolSchemas = {
         },
       },
       required: ["issues"],
+      additionalProperties: false,
     },
   },
 
@@ -1334,6 +1385,7 @@ export const toolSchemas = {
         },
       },
       required: ["body", "issueId"],
+      additionalProperties: false,
     },
   },
 
@@ -1359,6 +1411,7 @@ export const toolSchemas = {
         },
       },
       required: ["id", "input"],
+      additionalProperties: false,
     },
   },
 
@@ -1374,6 +1427,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1394,6 +1448,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1409,6 +1464,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1442,9 +1498,44 @@ export const toolSchemas = {
         },
       },
       required: ["attachmentId"],
+      additionalProperties: false,
     },
   },
   // Linear Project Milestone Tools
+  [getToolName("linear_delete_document")]: {
+    name: getToolName("linear_delete_document"),
+    description: getToolDescription(
+      "Move a document to the trash. Reversible with linear_restore_document."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Document ID (UUID) to trash",
+        },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
+  [getToolName("linear_restore_document")]: {
+    name: getToolName("linear_restore_document"),
+    description: getToolDescription(
+      "Restore a trashed document (documentUnarchive)."
+    ),
+    inputSchema: {
+      type: "object",
+      properties: {
+        id: {
+          type: "string",
+          description: "Document ID (UUID) to restore",
+        },
+      },
+      required: ["id"],
+      additionalProperties: false,
+    },
+  },
   [getToolName("linear_update_project")]: {
     name: getToolName("linear_update_project"),
     description: getToolDescription(
@@ -1533,12 +1624,13 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
   [getToolName("linear_delete_project")]: {
     name: getToolName("linear_delete_project"),
     description: getToolDescription(
-      "Move a project to the trash. Reversible with linear_restore_project. Linear has no separate archive operation for projects. Issues in the project are not deleted."
+      "Move a project to the trash. Reversible with linear_restore_project. Linear has no separate archive operation for projects. WARNING: the project's issues are ARCHIVED along with it - they are not destroyed, but they drop out of keyword search, identifier search and every default view until the project is restored. Move an issue to another project BEFORE deleting if it must stay visible; reassigning its project afterwards does NOT un-archive it."
     ),
     inputSchema: {
       type: "object",
@@ -1549,6 +1641,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
   [getToolName("linear_restore_project")]: {
@@ -1565,6 +1658,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
   [getToolName("linear_get_project_milestones")]: {
@@ -1638,6 +1732,7 @@ export const toolSchemas = {
         },
       },
       required: ["projectId"],
+      additionalProperties: false,
     },
   },
 
@@ -1672,6 +1767,7 @@ export const toolSchemas = {
         },
       },
       required: ["projectId", "name"],
+      additionalProperties: false,
     },
   },
 
@@ -1707,6 +1803,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1722,6 +1819,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1739,6 +1837,7 @@ export const toolSchemas = {
         },
       },
       required: ["id"],
+      additionalProperties: false,
     },
   },
 
@@ -1804,6 +1903,7 @@ export const toolSchemas = {
           optional: true,
         },
       },
+      additionalProperties: false,
     },
   },
 
@@ -1857,6 +1957,7 @@ export const toolSchemas = {
           optional: true,
         },
       },
+      additionalProperties: false,
     },
   },
 };
