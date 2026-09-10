@@ -75,6 +75,21 @@ export class ProjectHandler extends BaseHandler {
         }
       });
 
+      // Refuse a name that already exists unless explicitly overridden. Retrying
+      // a failed create is the main way duplicate projects appear, and a caller
+      // who has just seen an error cannot tell whether the first attempt landed.
+      if (!args.allowDuplicateName) {
+        const clashes = await client.findProjectsByName(args.project.name);
+        if (clashes.length > 0) {
+          throw new Error(
+            `A project named "${args.project.name}" already exists: ` +
+              clashes.map((c) => `${c.id} (${c.url})`).join(", ") +
+              ". Reuse it, choose a different name, or pass allowDuplicateName: true " +
+              "if a second project with this name is genuinely intended."
+          );
+        }
+      }
+
       const result = await client.createProjectWithIssues(
         args.project,
         args.issues
@@ -93,6 +108,9 @@ export class ProjectHandler extends BaseHandler {
       const response = [
         `Successfully created project with issues`,
         `Project: ${project.name}`,
+        // The id is reported so the caller can chain straight into
+        // linear_update_project without a lookup by name (TEH-4370 defect 2).
+        `Project ID: ${project.id}`,
         `Project URL: ${project.url}`,
       ];
 

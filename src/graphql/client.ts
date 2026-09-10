@@ -154,6 +154,25 @@ export class LinearGraphQLClient {
     });
   }
 
+  // Move a document to the trash (reversible via restoreDocument)
+  async deleteDocument(
+    id: string
+  ): Promise<{ documentDelete: { success: boolean } }> {
+    const { DELETE_DOCUMENT_MUTATION } = await import("./mutations.js");
+    return this.execute(DELETE_DOCUMENT_MUTATION, { id });
+  }
+
+  // Restore a trashed document
+  async restoreDocument(id: string): Promise<{
+    documentUnarchive: {
+      success: boolean;
+      entity: { id: string; title: string; url: string; updatedAt: string };
+    };
+  }> {
+    const { RESTORE_DOCUMENT_MUTATION } = await import("./mutations.js");
+    return this.execute(RESTORE_DOCUMENT_MUTATION, { id });
+  }
+
   // Create a project
   async createProject(input: ProjectInput): Promise<ProjectResponse> {
     const { CREATE_PROJECT } = await import("./mutations.js");
@@ -178,10 +197,37 @@ export class LinearGraphQLClient {
       projectId: projectResult.projectCreate.project.id,
     }));
 
-    const issuesResult = await this.createIssues(issuesWithProject);
+    const projectId = projectResult.projectCreate.project.id;
 
-    if (!issuesResult.issueBatchCreate.success) {
-      throw new Error("Failed to create issues");
+    // The project already exists by this point. If the issue batch fails we must
+    // undo it, or every failed retry leaves an orphan project behind and the
+    // caller - seeing only an error - creates a duplicate on the next attempt.
+    // That is what produced four duplicate project pairs (TEH-4370 defect 1).
+    let issuesResult;
+    try {
+      issuesResult = await this.createIssues(issuesWithProject);
+      if (!issuesResult.issueBatchCreate.success) {
+        throw new Error("Failed to create issues");
+      }
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+
+      let rolledBack = false;
+      try {
+        await this.deleteProject(projectId);
+        rolledBack = true;
+      } catch {
+        rolledBack = false;
+      }
+
+      // Reported outside the rollback try/catch: a throw inside it would be
+      // caught by its own handler and misreported as a rollback failure.
+      throw new Error(
+        rolledBack
+          ? `${reason} - the project just created was rolled back, so no orphan remains.`
+          : `${reason} - and rolling back the created project FAILED. ` +
+            `Orphan project left behind: ${projectId}. Delete it with linear_delete_project.`
+      );
     }
 
     return {
@@ -400,6 +446,22 @@ export class LinearGraphQLClient {
   async getProject(id: string): Promise<ProjectResponse> {
     const { GET_PROJECT_QUERY } = await import("./queries.js");
     return this.execute<ProjectResponse>(GET_PROJECT_QUERY, { id });
+  }
+
+  // Existing projects whose name matches exactly (case-insensitive).
+  // Backs the duplicate-name guard on project creation.
+  async findProjectsByName(
+    name: string
+  ): Promise<Array<{ id: string; name: string; url: string }>> {
+    const { SEARCH_PROJECTS_QUERY } = await import("./queries.js");
+    const result = await this.execute<SearchProjectsResponse>(
+      SEARCH_PROJECTS_QUERY,
+      {}
+    );
+    const target = name.trim().toLowerCase();
+    return (result.projects?.nodes ?? [])
+      .filter((p) => (p.name ?? "").trim().toLowerCase() === target)
+      .map((p) => ({ id: p.id, name: p.name, url: p.url }));
   }
 
   // Search projects
